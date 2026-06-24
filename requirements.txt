@@ -1,0 +1,5 @@
+flask>=3.0
+akshare>=1.18
+requests>=2.31
+schedule>=1.2
+gunicorn>=21.2

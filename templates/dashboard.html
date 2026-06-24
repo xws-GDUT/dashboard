@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AU9999 金价 & 国债收益率追踪器</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --gold: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold), #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-card .value.gold { color: var(--gold); }
+        .stat-card .value.bond { color: var(--accent); }
+
+        .stat-card .change {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .change.up { color: var(--green); }
+        .change.down { color: var(--red); }
+        .change.neutral { color: var(--text-muted); }
+
+        .stat-card .sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .chart-card h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+        }
+
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        .status-dot.live { background: var(--green); animation: pulse 2s infinite; }
+        .status-dot.offline { background: var(--red); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .ratio-card {
+            background: linear-gradient(135deg, #1e293b 0%, #1a1a2e 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .ratio-card .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .ratio-card .ratio-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .ratio-card .ratio-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .refresh-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+        .refresh-btn:hover { background: #2563eb; }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--gold);
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🥇 上海金 AU9999 & 国债收益率追踪器</h1>
+        <p class="subtitle">上海黄金交易所 AU9999 实时金价 · 中国十年期国债收益率 · 92号汽油油价 · 每日自动同步</p>
+    </div>
+
+    <div class="container">
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <span>
+                <span class="status-dot live" id="status-dot"></span>
+                <span id="status-text">加载中...</span>
+            </span>
+            <button class="refresh-btn" onclick="loadAll()" id="refresh-btn">🔄 刷新数据</button>
+        </div>
+
+        <!-- 核心数据卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">📀 上海金 AU9999 <span class="badge">SGE</span></div>
+                <div class="value gold" id="gold-price">--</div>
+                <div class="change neutral" id="gold-change">--</div>
+                <div class="sub">人民币/克 · 上海黄金交易所</div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid #8b5cf6;">
+                <div class="label">💰 近20年 M2 年化增长率 <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6;">央行</span></div>
+                <div class="value" style="color:#8b5cf6;" id="m2-cagr">--</div>
+                <div class="sub"><span id="m2-period">--</span><br>增长 <span id="m2-multiple">--</span> 倍</div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid #10b981;">
+                <div class="label">🛒 近20年 CPI 平均年化 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">通胀率</span></div>
+                <div class="value" style="color:#10b981;" id="cpi-cagr">--</div>
+                <div class="sub"><span id="cpi-period">--</span><br>最高 <span id="cpi-max">--</span> · 最低 <span id="cpi-min">--</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="label">📈 中国十年期国债收益率</div>
+                <div class="value bond" id="bond-yield">--</div>
+                <div class="sub">% 年化收益率</div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid #ef4444;">
+                <div class="label">⛽ 92号汽油 · 深圳 <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">广东</span></div>
+                <div class="value" style="color:#ef4444;" id="oil-sz">--</div>
+                <div class="sub">元/升 · <span id="oil-sz-date">--</span></div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid #f97316;">
+                <div class="label">⛽ 92号汽油 · 泉州 <span class="badge" style="background:rgba(249,115,22,0.15);color:#f97316;">福建</span></div>
+                <div class="value" style="color:#f97316;" id="oil-qz">--</div>
+                <div class="sub">元/升 · <span id="oil-qz-date">--</span></div>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card" style="border-left: 3px solid var(--gold);">
+                <div class="label">AU9999 金价 30日统计</div>
+                <div class="sub" style="font-size:0.85rem;margin-top:0.5rem;">
+                    最高: <strong id="gold-high">--</strong> 元/克<br>
+                    最低: <strong id="gold-low">--</strong> 元/克<br>
+                    均值: <strong id="gold-avg">--</strong> 元/克
+                </div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid var(--accent);">
+                <div class="label">国债收益率 30日统计</div>
+                <div class="sub" style="font-size:0.85rem;margin-top:0.5rem;">
+                    最高: <strong id="bond-high">--</strong><br>
+                    最低: <strong id="bond-low">--</strong><br>
+                    均值: <strong id="bond-avg">--</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>📀 AU9999 金价走势 (90天)</h3>
+                <div class="chart-container">
+                    <canvas id="goldChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>📈 国债收益率走势 (90天)</h3>
+                <div class="chart-container">
+                    <canvas id="bondChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card full-width">
+                <h3>📊 金价 vs 国债收益率 叠加对比</h3>
+                <div class="chart-container" style="height: 350px;">
+                    <canvas id="combinedChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>数据来源: 金价 → 上海黄金交易所 (sge.com.cn) | 国债收益率 → 中国货币网 (chinamoney.com.cn) | 油价 → api.ruseo.cn</p>
+            <p>自动同步: 每日定时执行 · 数据仅供参考，不构成投资建议</p>
+        </div>
+    </div>
+
+    <script>
+        let goldChart, bondChart, combinedChart;
+
+        async function loadAll() {
+            const btn = document.getElementById('refresh-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 加载中...';
+
+            try {
+                const [summary, goldHistory, bondHistory, combined] = await Promise.all([
+                    fetch('/api/summary').then(r => r.json()),
+                    fetch('/api/gold_history').then(r => r.json()),
+                    fetch('/api/bond_history').then(r => r.json()),
+                    fetch('/api/combined').then(r => r.json())
+                ]);
+
+                updateSummary(summary);
+                updateGoldChart(goldHistory);
+                updateBondChart(bondHistory);
+                updateCombinedChart(combined);
+
+                document.getElementById('status-dot').className = 'status-dot live';
+                document.getElementById('status-text').textContent = 
+                    '数据已更新 · ' + new Date().toLocaleString('zh-CN');
+            } catch (e) {
+                console.error('加载失败:', e);
+                document.getElementById('status-dot').className = 'status-dot offline';
+                document.getElementById('status-text').textContent = '加载失败，请检查网络';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 刷新数据';
+            }
+        }
+
+        function updateSummary(data) {
+            // 金价
+            if (data.gold && data.gold.price_cny_gram) {
+                document.getElementById('gold-price').textContent = '¥' + data.gold.price_cny_gram.toLocaleString();
+                
+                const change = data.gold.change_vs_yesterday;
+                const changeEl = document.getElementById('gold-change');
+                if (change !== null && change !== undefined) {
+                    const sign = change >= 0 ? '+' : '';
+                    changeEl.textContent = `${sign}¥${Math.abs(change).toLocaleString()} vs 昨日`;
+                    changeEl.className = 'change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'neutral');
+                } else {
+                    changeEl.textContent = '--';
+                }
+
+                document.getElementById('gold-high').textContent = '¥' + data.gold.stats_30d.high.toLocaleString();
+                document.getElementById('gold-low').textContent = '¥' + data.gold.stats_30d.low.toLocaleString();
+                document.getElementById('gold-avg').textContent = '¥' + data.gold.stats_30d.avg.toLocaleString();
+            }
+
+            // M2 年化增长率
+            if (data.m2 && data.m2.cagr_20y) {
+                document.getElementById('m2-cagr').textContent = data.m2.cagr_20y.toFixed(2) + '%';
+                document.getElementById('m2-period').textContent = data.m2.data_period || '--';
+                document.getElementById('m2-multiple').textContent = (data.m2.growth_multiple || 0).toFixed(1);
+            }
+
+            // 国债
+            if (data.bond && data.bond.yield_10y) {
+                document.getElementById('bond-yield').textContent = data.bond.yield_10y.toFixed(4) + '%';
+                document.getElementById('bond-high').textContent = data.bond.stats_30d.high.toFixed(4) + '%';
+                document.getElementById('bond-low').textContent = data.bond.stats_30d.low.toFixed(4) + '%';
+                document.getElementById('bond-avg').textContent = data.bond.stats_30d.avg.toFixed(4) + '%';
+            }
+
+            // CPI
+            if (data.cpi && data.cpi.cagr_20y) {
+                document.getElementById('cpi-cagr').textContent = data.cpi.cagr_20y.toFixed(2) + '%';
+                document.getElementById('cpi-period').textContent = data.cpi.data_period || '--';
+                document.getElementById('cpi-max').textContent = (data.cpi.cpi_max || 0).toFixed(1) + '%';
+                document.getElementById('cpi-min').textContent = (data.cpi.cpi_min || 0).toFixed(1) + '%';
+            }
+
+            // 金价/国债比 - 已删除
+            // (原卡片已移除)
+
+            // 油价
+            if (data.oil) {
+                if (data.oil.shenzhen && data.oil.shenzhen.price) {
+                    document.getElementById('oil-sz').textContent = '¥' + data.oil.shenzhen.price.toFixed(2);
+                    document.getElementById('oil-sz-date').textContent = data.oil.shenzhen.data_date || '--';
+                }
+                if (data.oil.quanzhou && data.oil.quanzhou.price) {
+                    document.getElementById('oil-qz').textContent = '¥' + data.oil.quanzhou.price.toFixed(2);
+                    document.getElementById('oil-qz-date').textContent = data.oil.quanzhou.data_date || '--';
+                }
+            }
+        }
+
+        function updateGoldChart(data) {
+            const ctx = document.getElementById('goldChart').getContext('2d');
+            const labels = data.map(d => d.date);
+            const prices = data.map(d => d.price_cny_gram);
+
+            if (goldChart) goldChart.destroy();
+
+            goldChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'AU9999 (元/克)',
+                        data: prices,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => '¥' + ctx.parsed.y.toLocaleString() + '/g'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        },
+                        y: {
+                            ticks: { color: '#64748b', callback: v => '¥' + v.toLocaleString(), font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        function updateBondChart(data) {
+            const ctx = document.getElementById('bondChart').getContext('2d');
+            const labels = data.map(d => d.date);
+            const yields = data.map(d => d.yield_10y);
+
+            if (bondChart) bondChart.destroy();
+
+            bondChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '十年期国债收益率',
+                        data: yields,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.parsed.y.toFixed(4) + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        },
+                        y: {
+                            ticks: { color: '#64748b', callback: v => v.toFixed(2) + '%', font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        function updateCombinedChart(data) {
+            const ctx = document.getElementById('combinedChart').getContext('2d');
+            const labels = data.map(d => d.date);
+            const goldPrices = data.map(d => d.gold_cny_gram);
+            const bondYields = data.map(d => d.bond_yield_10y);
+
+            if (combinedChart) combinedChart.destroy();
+
+            combinedChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'AU9999 (元/克)',
+                            data: goldPrices,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '国债收益率 (%)',
+                            data: bondYields,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.3,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8', usePointStyle: true, padding: 20 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    if (ctx.datasetIndex === 0) return '金价: ¥' + ctx.parsed.y.toLocaleString() + '/g';
+                                    return '国债: ' + ctx.parsed.y.toFixed(4) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: '金价 (元/克)', color: '#f59e0b' },
+                            ticks: { color: '#64748b', callback: v => '¥' + v.toLocaleString(), font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: '收益率 (%)', color: '#3b82f6' },
+                            ticks: { color: '#64748b', callback: v => v.toFixed(2) + '%', font: { size: 10 } },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', loadAll);
+        setInterval(loadAll, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

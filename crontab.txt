@@ -1,0 +1,18 @@
+# 金价 & 国债收益率追踪器 - Cron 配置
+# 
+# 将以下行添加到 crontab (crontab -e):
+#   每天 09:00, 12:00, 16:00, 20:00 执行数据同步
+#
+
+# 方案A: 使用 Python 调度器（推荐，开箱即用）
+# 直接运行: bash start.sh  (内置定时 + Web服务)
+
+# 方案B: 使用系统 cron + 独立 Web 服务
+# Web 服务 (常驻)
+# @reboot cd /workspace/gold-bond-tracker && python3.11 app.py > /tmp/gold_app.log 2>&1 &
+
+# 数据同步 (每天4次)
+0 9 * * * cd /workspace/gold-bond-tracker && python3.11 fetcher.py >> /tmp/gold_sync.log 2>&1
+0 12 * * * cd /workspace/gold-bond-tracker && python3.11 fetcher.py >> /tmp/gold_sync.log 2>&1
+0 16 * * * cd /workspace/gold-bond-tracker && python3.11 fetcher.py >> /tmp/gold_sync.log 2>&1
+0 20 * * * cd /workspace/gold-bond-tracker && python3.11 fetcher.py >> /tmp/gold_sync.log 2>&1

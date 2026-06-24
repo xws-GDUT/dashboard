@@ -1,0 +1,15 @@
+# Render 部署配置
+# 免费版: Web Service (512MB RAM) + 后台定时同步
+services:
+  - type: web
+    name: gold-bond-tracker
+    env: python
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 scheduler.py
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: PORT
+        value: "10000"
