@@ -28,20 +28,44 @@ def index():
 
 @app.route("/api/summary")
 def api_summary():
-    """最新数据摘要"""
+    """最新数据摘要 - 金价和国债实时获取"""
     conn = get_db()
     
-    # 最新金价
-    gold = conn.execute(
-        "SELECT fetch_date, fetch_time, price_cny_gram "
-        "FROM gold_price ORDER BY fetch_time DESC LIMIT 1"
-    ).fetchone()
+    # 实时获取金价 (不从缓存读)
+    try:
+        from fetcher import fetch_gold_price
+        gold_data = fetch_gold_price()
+    except Exception:
+        gold_data = None
     
-    # 最新国债
-    bond = conn.execute(
-        "SELECT fetch_date, fetch_time, yield_10y "
-        "FROM bond_yield ORDER BY fetch_time DESC LIMIT 1"
-    ).fetchone()
+    # 实时获取国债收益率 (不从缓存读)
+    try:
+        from fetcher import fetch_bond_yield
+        bond_data = fetch_bond_yield()
+    except Exception:
+        bond_data = None
+    
+    # 最新金价 (优先实时数据)
+    if gold_data:
+        gold_price = gold_data["price_cny_gram"]
+        gold_time = gold_data.get("updated_at", "")
+    else:
+        gold_db = conn.execute(
+            "SELECT price_cny_gram, fetch_time FROM gold_price ORDER BY fetch_time DESC LIMIT 1"
+        ).fetchone()
+        gold_price = gold_db["price_cny_gram"] if gold_db else None
+        gold_time = gold_db["fetch_time"] if gold_db else None
+    
+    # 最新国债 (优先实时数据)
+    if bond_data:
+        bond_yield_val = bond_data["yield_10y"]
+        bond_time = datetime.now().isoformat()
+    else:
+        bond_db = conn.execute(
+            "SELECT yield_10y, fetch_time FROM bond_yield ORDER BY fetch_time DESC LIMIT 1"
+        ).fetchone()
+        bond_yield_val = bond_db["yield_10y"] if bond_db else None
+        bond_time = bond_db["fetch_time"] if bond_db else None
     
     # 金价30日统计
     gold_stats = conn.execute("""
@@ -89,16 +113,16 @@ def api_summary():
     ).fetchone()
     
     gold_change = None
-    if gold and yesterday_gold and yesterday_gold["price_cny_gram"]:
-        gold_change = round(gold["price_cny_gram"] - yesterday_gold["price_cny_gram"], 2)
+    if gold_price and yesterday_gold and yesterday_gold["price_cny_gram"]:
+        gold_change = round(gold_price - yesterday_gold["price_cny_gram"], 2)
     
     conn.close()
     
     return jsonify({
         "gold": {
-            "price_cny_gram": gold["price_cny_gram"] if gold else None,
+            "price_cny_gram": gold_price,
             "change_vs_yesterday": gold_change,
-            "update_time": gold["fetch_time"] if gold else None,
+            "update_time": gold_time,
             "stats_30d": {
                 "high": round(gold_stats["high"], 2),
                 "low": round(gold_stats["low"], 2),
@@ -106,8 +130,8 @@ def api_summary():
             }
         },
         "bond": {
-            "yield_10y": bond["yield_10y"] if bond else None,
-            "update_time": bond["fetch_time"] if bond else None,
+            "yield_10y": bond_yield_val,
+            "update_time": bond_time,
             "stats_30d": {
                 "high": round(bond_stats["high"], 4),
                 "low": round(bond_stats["low"], 4),
