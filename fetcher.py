@@ -351,6 +351,32 @@ def fetch_m1m2_gap() -> Optional[Dict]:
         return None
 
 
+def fetch_m1m2_monthly() -> Optional[list]:
+    """获取最近24个月 M2/M1 环比增长率历史
+
+    Returns:
+        list: [{"month": str, "m2_mom": float, "m1_mom": float}, ...]
+    """
+    try:
+        import akshare as ak
+        df = ak.macro_china_money_supply()
+        if df is None or df.empty:
+            return None
+        
+        recent = df.head(24)
+        result = []
+        for _, row in recent.iterrows():
+            result.append({
+                "month": str(row["月份"]).replace("年", "-").replace("月份", ""),
+                "m2_mom": round(float(row["货币和准货币(M2)-环比增长"]), 2),
+                "m1_mom": round(float(row["货币(M1)-环比增长"]), 2)
+            })
+        return list(reversed(result))
+    except Exception as e:
+        print(f"[ERROR] 获取M1/M2环比历史失败: {e}")
+        return None
+
+
 def fetch_oil_price() -> Optional[Dict]:
     """获取92号汽油油价 (深圳=广东, 泉州=福建)
 

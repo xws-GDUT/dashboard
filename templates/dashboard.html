@@ -302,27 +302,17 @@
             </div>
         </div>
 
-        <!-- 统计卡片 -->
-        <div class="stats-grid">
-            <div class="stat-card" style="border-left: 3px solid var(--gold);">
-                <div class="label">AU9999 金价 30日统计</div>
-                <div class="sub" style="font-size:0.85rem;margin-top:0.5rem;">
-                    最高: <strong id="gold-high">--</strong> 元/克<br>
-                    最低: <strong id="gold-low">--</strong> 元/克<br>
-                    均值: <strong id="gold-avg">--</strong> 元/克
-                </div>
-            </div>
-            <div class="stat-card" style="border-left: 3px solid var(--accent);">
-                <div class="label">国债收益率 30日统计</div>
-                <div class="sub" style="font-size:0.85rem;margin-top:0.5rem;">
-                    最高: <strong id="bond-high">--</strong><br>
-                    最低: <strong id="bond-low">--</strong><br>
-                    均值: <strong id="bond-avg">--</strong>
+        <!-- M2/M1 环比剪刀差走势图 -->
+        <div class="charts-grid">
+            <div class="chart-card full-width">
+                <h3>✂️ M2 / M1 环比增长率走势 (24个月)</h3>
+                <div class="chart-container" style="height: 350px;">
+                    <canvas id="m1m2Chart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- 图表 -->
+        <!-- 金价和国债走势图 -->
         <div class="charts-grid">
             <div class="chart-card">
                 <h3>📀 AU9999 金价走势 (90天)</h3>
@@ -351,7 +341,7 @@
     </div>
 
     <script>
-        let goldChart, bondChart, combinedChart;
+        let goldChart, bondChart, combinedChart, m1m2Chart;
 
         async function loadAll() {
             const btn = document.getElementById('refresh-btn');
@@ -359,17 +349,19 @@
             btn.textContent = '⏳ 加载中...';
 
             try {
-                const [summary, goldHistory, bondHistory, combined] = await Promise.all([
+                const [summary, goldHistory, bondHistory, combined, m1m2Monthly] = await Promise.all([
                     fetch('/api/summary').then(r => r.json()),
                     fetch('/api/gold_history').then(r => r.json()),
                     fetch('/api/bond_history').then(r => r.json()),
-                    fetch('/api/combined').then(r => r.json())
+                    fetch('/api/combined').then(r => r.json()),
+                    fetch('/api/m1m2_monthly').then(r => r.json())
                 ]);
 
                 updateSummary(summary);
                 updateGoldChart(goldHistory);
                 updateBondChart(bondHistory);
                 updateCombinedChart(combined);
+                updateM1M2Chart(m1m2Monthly);
 
                 document.getElementById('status-dot').className = 'status-dot live';
                 document.getElementById('status-text').textContent = 
@@ -403,10 +395,6 @@
                 } else {
                     changeEl.textContent = '--';
                 }
-
-                document.getElementById('gold-high').textContent = '¥' + data.gold.stats_30d.high.toLocaleString();
-                document.getElementById('gold-low').textContent = '¥' + data.gold.stats_30d.low.toLocaleString();
-                document.getElementById('gold-avg').textContent = '¥' + data.gold.stats_30d.avg.toLocaleString();
             }
 
             // M2 年化增长率
@@ -428,9 +416,6 @@
             // 国债
             if (data.bond && data.bond.yield_10y) {
                 document.getElementById('bond-yield').textContent = data.bond.yield_10y.toFixed(4) + '%';
-                document.getElementById('bond-high').textContent = data.bond.stats_30d.high.toFixed(4) + '%';
-                document.getElementById('bond-low').textContent = data.bond.stats_30d.low.toFixed(4) + '%';
-                document.getElementById('bond-avg').textContent = data.bond.stats_30d.avg.toFixed(4) + '%';
             }
 
             // CPI
@@ -651,6 +636,63 @@
                         }
                     },
                     interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        function updateM1M2Chart(data) {
+            if (!data || data.length === 0) return;
+            const ctx = document.getElementById('m1m2Chart').getContext('2d');
+            const labels = data.map(d => d.month);
+            const m2Data = data.map(d => d.m2_mom);
+            const m1Data = data.map(d => d.m1_mom);
+
+            if (m1m2Chart) m1m2Chart.destroy();
+
+            m1m2Chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'M2 环比 (%)',
+                            data: m2Data,
+                            backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                            borderColor: '#8b5cf6',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'M1 环比 (%)',
+                            data: m1Data,
+                            backgroundColor: 'rgba(234, 179, 8, 0.5)',
+                            borderColor: '#eab308',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8', usePointStyle: true, padding: 15 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.dataset.label.replace(' (%)', '') + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(2) + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', maxTicksLimit: 12, font: { size: 9 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        },
+                        y: {
+                            ticks: { color: '#64748b', callback: v => (v >= 0 ? '+' : '') + v + '%', font: { size: 10 } },
+                            grid: { color: 'rgba(51,65,85,0.3)' }
+                        }
+                    }
                 }
             });
         }

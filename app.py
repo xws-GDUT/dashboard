@@ -236,6 +236,19 @@ def api_gold_history():
     } for r in rows])
 
 
+@app.route("/api/m1m2_monthly")
+def api_m1m2_monthly():
+    """M2/M1 环比增长率历史 (最近24个月)"""
+    try:
+        from fetcher import fetch_m1m2_monthly
+        data = fetch_m1m2_monthly()
+        if data:
+            return jsonify(data)
+    except Exception:
+        pass
+    return jsonify([])
+
+
 @app.route("/api/bond_history")
 def api_bond_history():
     """国债收益率历史数据 (最近90天)"""
