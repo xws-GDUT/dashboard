@@ -250,7 +250,7 @@
             <div class="stat-card" style="border-left: 3px solid #06b6d4; background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);">
                 <div class="label">💧 水贝黄金实时买价 <span class="badge" style="background:rgba(6,182,212,0.15);color:#06b6d4;">融通金</span></div>
                 <div class="value" style="color:#06b6d4;" id="shuibei-price">--</div>
-                <div class="sub">回购价差: <strong id="shuibei-spread">--</strong> · 运营成本指数: <strong id="shuibei-cost">--</strong></div>
+                <div class="sub">回购价差: <strong id="shuibei-spread">--</strong> · 运营<span id="shuibei-cost-detail">--</span> · 熔炼<span id="shuibei-melt">--</span> · 检测<span id="shuibei-test">--</span> · 利润<span id="shuibei-profit">--</span></div>
             </div>
             <div class="stat-card">
                 <div class="label">📀 上海金 AU9999 <span class="badge">SGE</span></div>
@@ -384,8 +384,11 @@
             if (data.shuibei_spread !== undefined) {
                 document.getElementById('shuibei-spread').textContent = '¥' + data.shuibei_spread.toFixed(2) + '/g';
             }
-            if (data.cost_index !== undefined) {
-                document.getElementById('shuibei-cost').textContent = data.cost_index.toFixed(1);
+            if (data.breakdown) {
+                document.getElementById('shuibei-cost-detail').textContent = '¥' + data.breakdown['运营成本'].toFixed(2);
+                document.getElementById('shuibei-melt').textContent = '¥' + data.breakdown['熔炼损耗'].toFixed(2);
+                document.getElementById('shuibei-test').textContent = '¥' + data.breakdown['检测费'].toFixed(2);
+                document.getElementById('shuibei-profit').textContent = '¥' + data.breakdown['利润'].toFixed(2);
             }
         }
 
