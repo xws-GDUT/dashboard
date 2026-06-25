@@ -352,7 +352,7 @@ def fetch_m1m2_gap() -> Optional[Dict]:
 
 
 def fetch_m1m2_monthly() -> Optional[list]:
-    """获取最近24个月 M2/M1 同比增长率历史
+    """获取 M2/M1 同比增长率历史 (2026年1月起，因25年1月M1口径调整)
 
     Returns:
         list: [{"month": str, "m2_yoy": float, "m1_yoy": float}, ...]
@@ -363,11 +363,14 @@ def fetch_m1m2_monthly() -> Optional[list]:
         if df is None or df.empty:
             return None
         
-        recent = df.head(24)
         result = []
-        for _, row in recent.iterrows():
+        for _, row in df.iterrows():
+            month_str = str(row["月份"])
+            # 只取2026年1月及之后 (M1口径调整后)
+            if "2026" not in month_str:
+                continue
             result.append({
-                "month": str(row["月份"]).replace("年", "-").replace("月份", ""),
+                "month": month_str.replace("年", "-").replace("月份", ""),
                 "m2_yoy": round(float(row["货币和准货币(M2)-同比增长"]), 2),
                 "m1_yoy": round(float(row["货币(M1)-同比增长"]), 2)
             })
