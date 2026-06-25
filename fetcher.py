@@ -2,7 +2,7 @@
 数据获取模块 - 获取上海黄金交易所 AU9999 金价、中国十年期国债收益率、92号汽油油价
 数据源:
   - 金价: 上海黄金交易所 (via AKShare spot_quotations_sge + spot_hist_sge)
-  - 国债利率: 中国货币网 (chinamoney.com.cn) 政府债券利率历史数据
+  - 国债利率: 中国债券信息网 (yield.chinabond.com.cn) + 东方财富备用
   - 油价: api.ruseo.cn 全国油价免费API
 """
 
@@ -173,74 +173,98 @@ def calc_shuibei_buy_price(au9999_price: float) -> float:
 def fetch_bond_yield() -> Optional[Dict]:
     """获取中国十年期国债收益率
     
-    数据来源: 中国货币网 (chinamoney.com.cn)
-    API: /ags/ms/cm-u-bk-currency/SddsIntrRateGovYldHis
-    返回最新一日的十年期国债收益率 (tenRate 字段)
+    数据来源优先级:
+      1. 中国债券信息网 (yield.chinabond.com.cn) - 权威估值，T+1更新
+      2. 东方财富 AKShare bond_zh_us_rate - 备用
     
+    返回最新一日的十年期国债收益率
+
     Returns:
         dict: {"yield_10y": float, "data_date": str} 或 None
     """
+    # 方案1: 中国债券信息网 xyQuery API (权威数据)
     try:
-        url = "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/SddsIntrRateGovYldHis"
-        params = {
-            "lang": "CN",
-            "pageNum": 1,
-            "pageSize": 3  # 取最近3条确保有数据
-        }
+        url = "https://yield.chinabond.com.cn/cbweb-mn/pgxh/xyQuery"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Referer": "https://www.chinamoney.com.cn/chinese/sddsintigy/",
-            "Origin": "https://www.chinamoney.com.cn",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": "https://yield.chinabond.com.cn/cbweb-mn/pgxh/pgxhIndex",
         }
-
-        resp = requests.post(url, params=params, headers=headers, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-
-        # 检查响应状态
-        head = data.get("head", {})
-        if head.get("rep_code") != "200":
-            print(f"[WARN] 中国货币网API返回异常: {head.get('rep_message')}")
-            return None
-
-        records = data.get("records", [])
-        if not records:
-            print("[WARN] 中国货币网未返回国债数据")
-            return None
-
-        # 取最新一条记录
-        latest = records[0]
-        ten_rate = latest.get("tenRate")
-        data_date = latest.get("dateString")
-
-        if ten_rate and float(ten_rate) > 0:
-            return {
-                "yield_10y": round(float(ten_rate), 4),
-                "data_date": data_date
-            }
-
-        print("[WARN] 中国货币网十年期国债数据为空")
-        return None
-
+        
+        # 尝试当天日期，如果没数据则前一天
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        
+        for days_back in range(3):
+            check_date = (today - timedelta(days=days_back)).strftime("%Y-%m-%d")
+            resp = requests.get(f"{url}?workTime={check_date}", headers=headers, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            # 解析: data[0]是曲线数据列表
+            if data and len(data) >= 2 and data[0]:
+                curve_data = data[0][0].get("seriesData", [])
+                worktime = data[0][0].get("worktime", check_date)
+                # 找x=10.0的十年期数据点
+                for point in curve_data:
+                    if abs(point[0] - 10.0) < 0.01:
+                        return {
+                            "yield_10y": round(float(point[1]), 4),
+                            "data_date": worktime
+                        }
+        
+        print("[WARN] 中国债券信息网未返回十年期数据")
     except Exception as e:
-        print(f"[ERROR] 获取国债收益率失败: {e}")
-        return _fetch_bond_yield_fallback()
-
-
-def _fetch_bond_yield_fallback() -> Optional[Dict]:
-    """备用方案: 通过 AKShare 获取中国10年期国债收益率"""
+        print(f"[WARN] 中国债券信息网获取失败: {e}")
+    
+    # 方案2: 东方财富 AKShare (备用)
     try:
         import akshare as ak
         df = ak.bond_zh_us_rate()
-        if df is not None and not df.empty:
-            if "中国10年" in df.columns:
-                latest = df.iloc[-1]
-                val = latest["中国10年"]
-                if val and float(val) > 0:
-                    return {"yield_10y": round(float(val), 4)}
+        if df is not None and not df.empty and "中国国债收益率10年" in df.columns:
+            latest = df.iloc[-1]
+            val = latest["中国国债收益率10年"]
+            if val and float(val) > 0:
+                return {
+                    "yield_10y": round(float(val), 4),
+                    "data_date": str(latest["日期"])
+                }
     except Exception as e:
-        print(f"[ERROR] 备用国债数据源也失败: {e}")
+        print(f"[WARN] 东方财富备用数据源失败: {e}")
+    
+    # 方案3: 中国货币网 (最后备用)
+    return _fetch_bond_yield_chinamoney()
+
+
+def _fetch_bond_yield_chinamoney() -> Optional[Dict]:
+    """中国货币网备用方案"""
+    try:
+        url = "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/SddsIntrRateGovYldHis"
+        params = {"lang": "CN", "pageNum": 1, "pageSize": 3}
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+            "Referer": "https://www.chinamoney.com.cn/chinese/sddsintigy/",
+        }
+        resp = requests.post(url, params=params, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        head = data.get("head", {})
+        if head.get("rep_code") != "200":
+            return None
+        
+        records = data.get("records", [])
+        if records:
+            latest = records[0]
+            ten_rate = latest.get("tenRate")
+            if ten_rate and float(ten_rate) > 0:
+                return {
+                    "yield_10y": round(float(ten_rate), 4),
+                    "data_date": latest.get("dateString")
+                }
+    except Exception as e:
+        print(f"[WARN] 中国货币网备用也失败: {e}")
     return None
 
 

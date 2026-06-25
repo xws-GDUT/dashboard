@@ -267,7 +267,7 @@ def init_web_db():
             fetch_date DATE NOT NULL,
             fetch_time DATETIME NOT NULL,
             yield_10y REAL NOT NULL,
-            source TEXT DEFAULT 'chinamoney.com.cn'
+            source TEXT DEFAULT 'chinabond.com.cn'
         )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_date ON gold_price(fetch_date)")
