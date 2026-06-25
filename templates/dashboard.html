@@ -234,7 +234,7 @@
 <body>
     <div class="header">
         <h1>🥇 上海金 AU9999 & 国债收益率追踪器</h1>
-        <p class="subtitle">上海黄金交易所 AU9999 实时金价 · 中国十年期国债收益率 · 92号汽油油价 · 每日自动同步</p>
+        <p class="subtitle">水贝黄金买价 · 上海金 AU9999 · 国债收益率 · CPI/M2 · 油价 · 每日自动同步</p>
     </div>
 
     <div class="container">
@@ -249,6 +249,11 @@
 
         <!-- 核心数据卡片 -->
         <div class="stats-grid">
+            <div class="stat-card" style="border-left: 3px solid #06b6d4; background: linear-gradient(135deg, #1e293b 0%, #0c2d3a 100%);">
+                <div class="label">💧 水贝黄金实时买价 <span class="badge" style="background:rgba(6,182,212,0.15);color:#06b6d4;">融通金</span></div>
+                <div class="value" style="color:#06b6d4;" id="shuibei-price">--</div>
+                <div class="sub">元/克 · Au99.99基准价 - 4元回购价差</div>
+            </div>
             <div class="stat-card">
                 <div class="label">📀 上海金 AU9999 <span class="badge">SGE</span></div>
                 <div class="value gold" id="gold-price">--</div>
@@ -325,7 +330,7 @@
         </div>
 
         <div class="footer">
-            <p>数据来源: 金价 → 上海黄金交易所 (sge.com.cn) | 国债收益率 → 中国货币网 (chinamoney.com.cn) | 油价 → api.ruseo.cn</p>
+            <p>数据来源: 金价 → 上海黄金交易所 | 水贝买价 → 研究报告公式计算 | 国债 → 中国货币网 | 油价 → api.ruseo.cn</p>
             <p>自动同步: 每日定时执行 · 数据仅供参考，不构成投资建议</p>
         </div>
     </div>
@@ -365,6 +370,11 @@
         }
 
         function updateSummary(data) {
+            // 水贝买价
+            if (data.gold && data.gold.shuibei_buy) {
+                document.getElementById('shuibei-price').textContent = '¥' + data.gold.shuibei_buy.toLocaleString();
+            }
+
             // 金价
             if (data.gold && data.gold.price_cny_gram) {
                 document.getElementById('gold-price').textContent = '¥' + data.gold.price_cny_gram.toLocaleString();

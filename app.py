@@ -56,6 +56,12 @@ def api_summary():
         gold_price = gold_db["price_cny_gram"] if gold_db else None
         gold_time = gold_db["fetch_time"] if gold_db else None
     
+    # 计算水贝黄金实时买价
+    shuibei_price = None
+    if gold_price:
+        from fetcher import calc_shuibei_buy_price
+        shuibei_price = calc_shuibei_buy_price(gold_price)
+    
     # 最新国债 (优先实时数据)
     if bond_data:
         bond_yield_val = bond_data["yield_10y"]
@@ -121,6 +127,7 @@ def api_summary():
     return jsonify({
         "gold": {
             "price_cny_gram": gold_price,
+            "shuibei_buy": shuibei_price,
             "change_vs_yesterday": gold_change,
             "update_time": gold_time,
             "stats_30d": {

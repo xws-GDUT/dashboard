@@ -153,6 +153,23 @@ def fetch_gold_price() -> Optional[Dict]:
         return None
 
 
+def calc_shuibei_buy_price(au9999_price: float) -> float:
+    """根据研究报告计算水贝黄金实时买价
+    
+    公式: 水贝买价 ≈ 上金所Au99.99实时价 - 4元/克
+    来源: 《融通金APP水贝黄金买价形成机制研究报告》
+    
+    Args:
+        au9999_price: 上金所 Au99.99 实时价 (元/克)
+    
+    Returns:
+        水贝黄金买价 (元/克)
+    """
+    # 回购价差: 市场平稳时约 3~4元/克，取中间值4元
+    BUY_SPREAD = 4.0
+    return round(au9999_price - BUY_SPREAD, 2)
+
+
 def fetch_bond_yield() -> Optional[Dict]:
     """获取中国十年期国债收益率
     
