@@ -190,7 +190,7 @@ def calc_shuibei_buy_price(au9999_price: float) -> Dict:
         intl_data = fetch_intl_gold()
         if intl_data:
             london_price = intl_data["price_usd_oz"]     # 伦敦金 USD/oz
-            fx_rate = intl_data["fx_rate"]                # USDCNY 在岸汇率
+            fx_rate = intl_data["fx_rate"]                # USDCNH 离岸汇率
         else:
             london_price = au9999_price * 31.1035 / 7.25  # 估算
             fx_rate = 7.25
@@ -327,12 +327,13 @@ def fetch_intl_gold() -> Optional[Dict]:
     """获取国际金价 (XAU/USD) 并折算人民币
 
     数据来源: xaus.com 免费API
+    汇率: 离岸人民币 USDCNH (xaus.com 的 fx_rate 用于国际金市参考)
 
     Returns:
         dict: {
             "price_usd_oz": float,      # 美元/盎司
-            "price_cny_gram": float,    # 人民币/克 (按汇率折算)
-            "fx_rate": float,           # USD/CNY 汇率
+            "price_cny_gram": float,    # 人民币/克 (按离岸汇率折算)
+            "fx_rate": float,           # USD/CNH 离岸汇率
             "updated_at": str,          # 更新时间
         }
     """
@@ -347,8 +348,17 @@ def fetch_intl_gold() -> Optional[Dict]:
         data = resp.json()
         
         price_usd_oz = data.get("spot_usd_oz", 0)
+        
+        # 优先用离岸汇率: xaus.com 的 fx_rate 反映国际金市实际使用的汇率
+        # 它通常接近离岸人民币 USDCNH
         fx_rate = data.get("fx_rate", 7.25)
-        # 人民币/克 = 美元/盎司 × 汇率 ÷ 31.1035
+        
+        # 获取离岸汇率 (USDCNH) 用于更精确的计算
+        cnh_rate = _fetch_usdcnh()
+        if cnh_rate and abs(cnh_rate - fx_rate) < 0.5:
+            fx_rate = cnh_rate  # 使用更精确的离岸汇率
+        
+        # 人民币/克 = 美元/盎司 × 离岸汇率 ÷ 31.1035
         price_cny_gram = round(price_usd_oz * fx_rate / 31.1035, 2)
         
         return {
@@ -360,6 +370,54 @@ def fetch_intl_gold() -> Optional[Dict]:
     except Exception as e:
         print(f"[ERROR] 获取国际金价失败: {e}")
         return None
+
+
+def _fetch_usdcnh() -> Optional[float]:
+    """获取离岸人民币兑美元汇率 (USDCNH)
+
+    数据来源: 新浪财经/东方财富
+    返回: USDCNH 汇率，失败返回 None
+    """
+    try:
+        # 方案1: 东方财富 USDCNH
+        resp = requests.get(
+            "https://push2.eastmoney.com/api/qt/stock/get",
+            params={
+                "secid": "133.USDCNH",
+                "fields": "f43",
+                "ut": "fa5fd1943c7b386f172d6893dbfdc10c",
+            },
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        price = data.get("data", {}).get("f43")
+        if price and price > 0:
+            return round(price / 10000, 4)  # 东方财富返回的是乘以10000的值
+    except:
+        pass
+    
+    try:
+        # 方案2: 新浪财经
+        resp = requests.get(
+            "https://hq.sinajs.cn/list=fx_susdcnh",
+            headers={"Referer": "https://finance.sina.com.cn/", "User-Agent": "Mozilla/5.0"},
+            timeout=10
+        )
+        resp.encoding = "gbk"
+        text = resp.text
+        # 格式: var hq_str_fx_susdcnh="日期,最新价,开盘,最高,最低,昨收,..."
+        import re
+        match = re.search(r'"([^"]+)"', text)
+        if match:
+            parts = match.group(1).split(",")
+            if len(parts) > 1 and parts[1]:
+                return round(float(parts[1]), 4)
+    except:
+        pass
+    
+    return None
 
 
 def fetch_bond_yield() -> Optional[Dict]:
