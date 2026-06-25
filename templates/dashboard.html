@@ -255,7 +255,7 @@
             <div class="stat-card" style="border-left: 3px solid #06b6d4; background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);">
                 <div class="label">💧 水贝黄金实时买价 <span class="badge" style="background:rgba(6,182,212,0.15);color:#06b6d4;">融通金</span> <span style="font-size:0.65rem;color:#64748b;" id="shuibei-session">--</span></div>
                 <div class="value" style="color:#06b6d4;" id="shuibei-price">--</div>
-                <div class="sub">价差: <strong id="shuibei-spread">--</strong> (固定<span id="shuibei-fixed">--</span> + 波动<span id="shuibei-vol">--</span>) · 运营<span id="shuibei-cost-detail">--</span> · 熔炼<span id="shuibei-melt">--</span> · 检测<span id="shuibei-test">--</span> · 利润<span id="shuibei-profit">--</span></div>
+                <div class="sub">综合基准价(AU9999+AU(T+D)+XAU修正) - 固定点差<span id="shuibei-fixed">--</span> - 波动点差<span id="shuibei-vol">--</span> = 回购价<span id="shuibei-spread">--</span></div>
             </div>
             <div class="stat-card">
                 <div class="label">📀 上海金 AU9999 <span class="badge">SGE</span></div>
@@ -394,16 +394,12 @@
                 document.getElementById('shuibei-session').textContent = '[' + data.session + ']';
             }
             // 价差拆分为固定+波动
-            if (data.breakdown) {
-                const total = data.shuibei_spread || 0;
-                const fixed = data.is_trading ? 1.0 : (total > 2.5 ? 1.0 : total * 0.4);
+            if (data.shuibei_spread !== undefined) {
+                const total = data.shuibei_spread;
+                const fixed = data.is_trading ? 1.0 : 1.0;
                 const vol = total - fixed;
                 document.getElementById('shuibei-fixed').textContent = '¥' + fixed.toFixed(2);
                 document.getElementById('shuibei-vol').textContent = '¥' + Math.max(0, vol).toFixed(2);
-                document.getElementById('shuibei-cost-detail').textContent = '¥' + data.breakdown['运营成本'].toFixed(2);
-                document.getElementById('shuibei-melt').textContent = '¥' + data.breakdown['熔炼损耗'].toFixed(2);
-                document.getElementById('shuibei-test').textContent = '¥' + data.breakdown['检测费'].toFixed(2);
-                document.getElementById('shuibei-profit').textContent = '¥' + data.breakdown['利润'].toFixed(2);
             }
         }
 
