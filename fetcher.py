@@ -352,10 +352,10 @@ def fetch_m1m2_gap() -> Optional[Dict]:
 
 
 def fetch_m1m2_monthly() -> Optional[list]:
-    """获取最近24个月 M2/M1 环比增长率历史
+    """获取最近24个月 M2/M1 同比增长率历史
 
     Returns:
-        list: [{"month": str, "m2_mom": float, "m1_mom": float}, ...]
+        list: [{"month": str, "m2_yoy": float, "m1_yoy": float}, ...]
     """
     try:
         import akshare as ak
@@ -368,12 +368,12 @@ def fetch_m1m2_monthly() -> Optional[list]:
         for _, row in recent.iterrows():
             result.append({
                 "month": str(row["月份"]).replace("年", "-").replace("月份", ""),
-                "m2_mom": round(float(row["货币和准货币(M2)-环比增长"]), 2),
-                "m1_mom": round(float(row["货币(M1)-环比增长"]), 2)
+                "m2_yoy": round(float(row["货币和准货币(M2)-同比增长"]), 2),
+                "m1_yoy": round(float(row["货币(M1)-同比增长"]), 2)
             })
         return list(reversed(result))
     except Exception as e:
-        print(f"[ERROR] 获取M1/M2环比历史失败: {e}")
+        print(f"[ERROR] 获取M1/M2同比历史失败: {e}")
         return None
 
 
