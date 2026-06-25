@@ -305,31 +305,9 @@
         <!-- M2/M1 环比剪刀差走势图 -->
         <div class="charts-grid">
             <div class="chart-card full-width">
-                <h3>✂️ M2 / M1 环比增长率走势 (24个月)</h3>
-                <div class="chart-container" style="height: 350px;">
+                <h3>✂️ M2-M1 环比剪刀差走势 (24个月)</h3>
+                <div class="chart-container" style="height: 400px;">
                     <canvas id="m1m2Chart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- 金价和国债走势图 -->
-        <div class="charts-grid">
-            <div class="chart-card">
-                <h3>📀 AU9999 金价走势 (90天)</h3>
-                <div class="chart-container">
-                    <canvas id="goldChart"></canvas>
-                </div>
-            </div>
-            <div class="chart-card">
-                <h3>📈 国债收益率走势 (90天)</h3>
-                <div class="chart-container">
-                    <canvas id="bondChart"></canvas>
-                </div>
-            </div>
-            <div class="chart-card full-width">
-                <h3>📊 金价 vs 国债收益率 叠加对比</h3>
-                <div class="chart-container" style="height: 350px;">
-                    <canvas id="combinedChart"></canvas>
                 </div>
             </div>
         </div>
@@ -341,7 +319,7 @@
     </div>
 
     <script>
-        let goldChart, bondChart, combinedChart, m1m2Chart;
+        let m1m2Chart;
 
         async function loadAll() {
             const btn = document.getElementById('refresh-btn');
@@ -349,18 +327,12 @@
             btn.textContent = '⏳ 加载中...';
 
             try {
-                const [summary, goldHistory, bondHistory, combined, m1m2Monthly] = await Promise.all([
+                const [summary, m1m2Monthly] = await Promise.all([
                     fetch('/api/summary').then(r => r.json()),
-                    fetch('/api/gold_history').then(r => r.json()),
-                    fetch('/api/bond_history').then(r => r.json()),
-                    fetch('/api/combined').then(r => r.json()),
                     fetch('/api/m1m2_monthly').then(r => r.json())
                 ]);
 
                 updateSummary(summary);
-                updateGoldChart(goldHistory);
-                updateBondChart(bondHistory);
-                updateCombinedChart(combined);
                 updateM1M2Chart(m1m2Monthly);
 
                 document.getElementById('status-dot').className = 'status-dot live';
@@ -462,190 +434,12 @@
             }
         }
 
-        function updateGoldChart(data) {
-            const ctx = document.getElementById('goldChart').getContext('2d');
-            const labels = data.map(d => d.date);
-            const prices = data.map(d => d.price_cny_gram);
-
-            if (goldChart) goldChart.destroy();
-
-            goldChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'AU9999 (元/克)',
-                        data: prices,
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        fill: true,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => '¥' + ctx.parsed.y.toLocaleString() + '/g'
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
-                            grid: { color: 'rgba(51,65,85,0.3)' }
-                        },
-                        y: {
-                            ticks: { color: '#64748b', callback: v => '¥' + v.toLocaleString(), font: { size: 10 } },
-                            grid: { color: 'rgba(51,65,85,0.3)' }
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' }
-                }
-            });
-        }
-
-        function updateBondChart(data) {
-            const ctx = document.getElementById('bondChart').getContext('2d');
-            const labels = data.map(d => d.date);
-            const yields = data.map(d => d.yield_10y);
-
-            if (bondChart) bondChart.destroy();
-
-            bondChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '十年期国债收益率',
-                        data: yields,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.parsed.y.toFixed(4) + '%'
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
-                            grid: { color: 'rgba(51,65,85,0.3)' }
-                        },
-                        y: {
-                            ticks: { color: '#64748b', callback: v => v.toFixed(2) + '%', font: { size: 10 } },
-                            grid: { color: 'rgba(51,65,85,0.3)' }
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' }
-                }
-            });
-        }
-
-        function updateCombinedChart(data) {
-            const ctx = document.getElementById('combinedChart').getContext('2d');
-            const labels = data.map(d => d.date);
-            const goldPrices = data.map(d => d.gold_cny_gram);
-            const bondYields = data.map(d => d.bond_yield_10y);
-
-            if (combinedChart) combinedChart.destroy();
-
-            combinedChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'AU9999 (元/克)',
-                            data: goldPrices,
-                            borderColor: '#f59e0b',
-                            backgroundColor: 'rgba(245, 158, 11, 0.05)',
-                            fill: false,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            tension: 0.3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: '国债收益率 (%)',
-                            data: bondYields,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                            fill: false,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            tension: 0.3,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#94a3b8', usePointStyle: true, padding: 20 }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(ctx) {
-                                    if (ctx.datasetIndex === 0) return '金价: ¥' + ctx.parsed.y.toLocaleString() + '/g';
-                                    return '国债: ' + ctx.parsed.y.toFixed(4) + '%';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
-                            grid: { color: 'rgba(51,65,85,0.3)' }
-                        },
-                        y: {
-                            type: 'linear',
-                            position: 'left',
-                            title: { display: true, text: '金价 (元/克)', color: '#f59e0b' },
-                            ticks: { color: '#64748b', callback: v => '¥' + v.toLocaleString(), font: { size: 10 } },
-                            grid: { color: 'rgba(51,65,85,0.3)' }
-                        },
-                        y1: {
-                            type: 'linear',
-                            position: 'right',
-                            title: { display: true, text: '收益率 (%)', color: '#3b82f6' },
-                            ticks: { color: '#64748b', callback: v => v.toFixed(2) + '%', font: { size: 10 } },
-                            grid: { drawOnChartArea: false }
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' }
-                }
-            });
-        }
-
         function updateM1M2Chart(data) {
             if (!data || data.length === 0) return;
             const ctx = document.getElementById('m1m2Chart').getContext('2d');
             const labels = data.map(d => d.month);
-            const m2Data = data.map(d => d.m2_mom);
-            const m1Data = data.map(d => d.m1_mom);
+            // 剪刀差 = M2环比 - M1环比
+            const gapData = data.map(d => parseFloat((d.m2_mom - d.m1_mom).toFixed(2)));
 
             if (m1m2Chart) m1m2Chart.destroy();
 
@@ -653,33 +447,22 @@
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: 'M2 环比 (%)',
-                            data: m2Data,
-                            backgroundColor: 'rgba(139, 92, 246, 0.5)',
-                            borderColor: '#8b5cf6',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'M1 环比 (%)',
-                            data: m1Data,
-                            backgroundColor: 'rgba(234, 179, 8, 0.5)',
-                            borderColor: '#eab308',
-                            borderWidth: 1
-                        }
-                    ]
+                    datasets: [{
+                        label: 'M2-M1 环比剪刀差 (%)',
+                        data: gapData,
+                        backgroundColor: gapData.map(v => v >= 0 ? 'rgba(139, 92, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)'),
+                        borderColor: gapData.map(v => v >= 0 ? '#8b5cf6' : '#ef4444'),
+                        borderWidth: 1
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            labels: { color: '#94a3b8', usePointStyle: true, padding: 15 }
-                        },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: ctx => ctx.dataset.label.replace(' (%)', '') + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(2) + '%'
+                                label: ctx => '剪刀差: ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(2) + '%'
                             }
                         }
                     },
