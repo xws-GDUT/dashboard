@@ -417,6 +417,19 @@ def api_gold_live():
     return jsonify({})
 
 
+@app.route("/api/intl_gold")
+def api_intl_gold():
+    """国际金价 (XAU/USD) 折算人民币"""
+    try:
+        from fetcher import fetch_intl_gold
+        data = fetch_intl_gold()
+        if data:
+            return jsonify(data)
+    except:
+        pass
+    return jsonify({})
+
+
 @app.route("/api/bond_live")
 def api_bond_live():
     """实时国债收益率"""

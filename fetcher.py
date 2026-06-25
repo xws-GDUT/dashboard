@@ -300,6 +300,45 @@ def calc_shuibei_buy_price(au9999_price: float) -> Dict:
         }
 
 
+def fetch_intl_gold() -> Optional[Dict]:
+    """获取国际金价 (XAU/USD) 并折算人民币
+
+    数据来源: xaus.com 免费API
+
+    Returns:
+        dict: {
+            "price_usd_oz": float,      # 美元/盎司
+            "price_cny_gram": float,    # 人民币/克 (按汇率折算)
+            "fx_rate": float,           # USD/CNY 汇率
+            "updated_at": str,          # 更新时间
+        }
+    """
+    try:
+        resp = requests.get(
+            "https://xaus.com/api/v1/spot",
+            params={"currency": "CNY"},
+            timeout=10,
+            headers={"User-Agent": "GoldBondTracker/1.0"}
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        
+        price_usd_oz = data.get("spot_usd_oz", 0)
+        fx_rate = data.get("fx_rate", 7.25)
+        # 人民币/克 = 美元/盎司 × 汇率 ÷ 31.1035
+        price_cny_gram = round(price_usd_oz * fx_rate / 31.1035, 2)
+        
+        return {
+            "price_usd_oz": round(price_usd_oz, 2),
+            "price_cny_gram": price_cny_gram,
+            "fx_rate": round(fx_rate, 4),
+            "updated_at": data.get("updated_at", "")
+        }
+    except Exception as e:
+        print(f"[ERROR] 获取国际金价失败: {e}")
+        return None
+
+
 def fetch_bond_yield() -> Optional[Dict]:
     """获取中国十年期国债收益率（实时）
     

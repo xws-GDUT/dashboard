@@ -247,6 +247,11 @@
 
         <!-- 核心数据卡片 -->
         <div class="stats-grid">
+            <div class="stat-card" style="border-left: 3px solid #f59e0b;">
+                <div class="label">🌍 国际金价 (XAU/USD) <span class="badge" style="background:#fef3c7;color:#92400e;">伦敦金</span></div>
+                <div class="value gold" id="intl-gold">--</div>
+                <div class="sub">折合人民币: <strong id="intl-gold-cny">--</strong> · 汇率: <span id="intl-fx">--</span></div>
+            </div>
             <div class="stat-card" style="border-left: 3px solid #06b6d4; background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);">
                 <div class="label">💧 水贝黄金实时买价 <span class="badge" style="background:rgba(6,182,212,0.15);color:#06b6d4;">融通金</span></div>
                 <div class="value" style="color:#06b6d4;" id="shuibei-price">--</div>
@@ -359,6 +364,7 @@
             // 逐个请求，先到先渲染
             const apis = [
                 { url: '/api/gold_live', handler: updateGoldCard },
+                { url: '/api/intl_gold', handler: updateIntlGoldCard },
                 { url: '/api/m1m2_live', handler: updateM1M2Card },
                 { url: '/api/bond_live', handler: updateBondCard },
                 { url: '/api/lpr_live', handler: updateLPRCard },
@@ -389,6 +395,18 @@
                 document.getElementById('shuibei-melt').textContent = '¥' + data.breakdown['熔炼损耗'].toFixed(2);
                 document.getElementById('shuibei-test').textContent = '¥' + data.breakdown['检测费'].toFixed(2);
                 document.getElementById('shuibei-profit').textContent = '¥' + data.breakdown['利润'].toFixed(2);
+            }
+        }
+
+        function updateIntlGoldCard(data) {
+            if (data.price_usd_oz) {
+                document.getElementById('intl-gold').textContent = '$' + data.price_usd_oz.toLocaleString();
+            }
+            if (data.price_cny_gram) {
+                document.getElementById('intl-gold-cny').textContent = '¥' + data.price_cny_gram.toLocaleString() + '/g';
+            }
+            if (data.fx_rate) {
+                document.getElementById('intl-fx').textContent = data.fx_rate.toFixed(2);
             }
         }
 
