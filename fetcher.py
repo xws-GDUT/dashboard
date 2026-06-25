@@ -313,6 +313,44 @@ def fetch_lpr() -> Optional[Dict]:
         return None
 
 
+def fetch_m1m2_gap() -> Optional[Dict]:
+    """计算最新 M2-M1 同比增速剪刀差
+
+    数据来源: AKShare → macro_china_money_supply (央行)
+    剪刀差 = M2同比增长 - M1同比增长
+    正值扩大 → 资金活化不足、经济偏冷
+    负值/收窄 → 资金活跃、经济偏热
+
+    Returns:
+        dict: {
+            "gap": float,           # M2-M1剪刀差 (%)
+            "m2_yoy": float,        # M2同比 (%)
+            "m1_yoy": float,        # M1同比 (%)
+            "data_date": str,       # 数据月份
+        }
+        失败返回 None
+    """
+    try:
+        import akshare as ak
+        df = ak.macro_china_money_supply()
+        if df is None or df.empty:
+            return None
+        
+        latest = df.iloc[0]
+        m2_yoy = float(latest["货币和准货币(M2)-同比增长"])
+        m1_yoy = float(latest["货币(M1)-同比增长"])
+        
+        return {
+            "gap": round(m2_yoy - m1_yoy, 2),
+            "m2_yoy": round(m2_yoy, 2),
+            "m1_yoy": round(m1_yoy, 2),
+            "data_date": str(latest["月份"])
+        }
+    except Exception as e:
+        print(f"[ERROR] 获取M1/M2剪刀差失败: {e}")
+        return None
+
+
 def fetch_oil_price() -> Optional[Dict]:
     """获取92号汽油油价 (深圳=广东, 泉州=福建)
 

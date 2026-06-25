@@ -36,6 +36,7 @@ def api_summary():
     gold_data = None
     bond_data = None
     lpr_data = None
+    m1m2_data = None
     
     def fetch_gold_wrapper():
         from fetcher import fetch_gold_price
@@ -49,11 +50,16 @@ def api_summary():
         from fetcher import fetch_lpr
         return fetch_lpr()
     
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    def fetch_m1m2_wrapper():
+        from fetcher import fetch_m1m2_gap
+        return fetch_m1m2_gap()
+    
+    with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             executor.submit(fetch_gold_wrapper): "gold",
             executor.submit(fetch_bond_wrapper): "bond",
             executor.submit(fetch_lpr_wrapper): "lpr",
+            executor.submit(fetch_m1m2_wrapper): "m1m2",
         }
         for future in futures:
             name = futures[future]
@@ -65,6 +71,8 @@ def api_summary():
                     bond_data = result
                 elif name == "lpr":
                     lpr_data = result
+                elif name == "m1m2":
+                    m1m2_data = result
             except Exception:
                 pass  # 失败则使用数据库缓存
     
@@ -198,7 +206,13 @@ def api_summary():
             "lpr_5y": lpr_data["lpr_5y"] if lpr_data else None,
             "data_date": lpr_data["data_date"] if lpr_data else None
         },
-        "fund_rate": fund_rate
+        "fund_rate": fund_rate,
+        "m1m2_gap": {
+            "gap": m1m2_data["gap"] if m1m2_data else None,
+            "m2_yoy": m1m2_data["m2_yoy"] if m1m2_data else None,
+            "m1_yoy": m1m2_data["m1_yoy"] if m1m2_data else None,
+            "data_date": m1m2_data["data_date"] if m1m2_data else None
+        }
     })
 
 

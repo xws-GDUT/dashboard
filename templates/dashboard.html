@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AU9999 金价 & 国债收益率追踪器</title>
+    <title>行情早知道 — 宏观经济核心指标实时追踪</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
@@ -233,8 +233,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>🥇 上海金 AU9999 & 国债收益率追踪器</h1>
-        <p class="subtitle">水贝黄金买价 · 上海金 AU9999 · 国债收益率 · CPI/M2 · 油价 · 每日自动同步</p>
+        <h1>📺 行情早知道</h1>
+        <p class="subtitle">金价 · 利率 · 油价 · 通胀 · 货币 — 每天看一眼，心里有数</p>
     </div>
 
     <div class="container">
@@ -264,6 +264,11 @@
                 <div class="label">💰 近20年 M2 年化增长率 <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6;">央行</span></div>
                 <div class="value" style="color:#8b5cf6;" id="m2-cagr">--</div>
                 <div class="sub"><span id="m2-period">--</span><br>增长 <span id="m2-multiple">--</span> 倍</div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid #eab308;">
+                <div class="label">✂️ M2-M1 剪刀差 <span class="badge" style="background:rgba(234,179,8,0.15);color:#eab308;">央行</span></div>
+                <div class="value" style="color:#eab308;" id="m1m2-gap">--</div>
+                <div class="sub">M2同比: <strong id="m2-yoy">--</strong> · M1同比: <strong id="m1-yoy">--</strong><br>数据: <span id="m1m2-date">--</span></div>
             </div>
             <div class="stat-card" style="border-left: 3px solid #10b981;">
                 <div class="label">🛒 近20年 CPI 平均年化 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">通胀率</span></div>
@@ -409,6 +414,15 @@
                 document.getElementById('m2-cagr').textContent = data.m2.cagr_20y.toFixed(2) + '%';
                 document.getElementById('m2-period').textContent = data.m2.data_period || '--';
                 document.getElementById('m2-multiple').textContent = (data.m2.growth_multiple || 0).toFixed(1);
+            }
+
+            // M2-M1剪刀差
+            if (data.m1m2_gap && data.m1m2_gap.gap !== null) {
+                const gap = data.m1m2_gap.gap;
+                document.getElementById('m1m2-gap').textContent = (gap >= 0 ? '+' : '') + gap.toFixed(2) + '%';
+                document.getElementById('m2-yoy').textContent = (data.m1m2_gap.m2_yoy || 0).toFixed(1) + '%';
+                document.getElementById('m1-yoy').textContent = (data.m1m2_gap.m1_yoy || 0).toFixed(1) + '%';
+                document.getElementById('m1m2-date').textContent = data.m1m2_gap.data_date || '--';
             }
 
             // 国债
