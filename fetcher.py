@@ -314,16 +314,16 @@ def fetch_lpr() -> Optional[Dict]:
 
 
 def fetch_m1m2_gap() -> Optional[Dict]:
-    """计算最新 M2-M1 同比增速剪刀差
+    """计算最新 M1-M2 同比增速剪刀差
 
     数据来源: AKShare → macro_china_money_supply (央行)
-    剪刀差 = M2同比增长 - M1同比增长
-    正值扩大 → 资金活化不足、经济偏冷
-    负值/收窄 → 资金活跃、经济偏热
+    剪刀差 = M1同比增长 - M2同比增长
+    正值 → M1增速快于M2，资金活化，经济偏热
+    负值 → M1增速慢于M2，资金沉淀，经济偏冷
 
     Returns:
         dict: {
-            "gap": float,           # M2-M1剪刀差 (%)
+            "gap": float,           # M1-M2剪刀差 (%)
             "m2_yoy": float,        # M2同比 (%)
             "m1_yoy": float,        # M1同比 (%)
             "data_date": str,       # 数据月份
@@ -341,7 +341,7 @@ def fetch_m1m2_gap() -> Optional[Dict]:
         m1_yoy = float(latest["货币(M1)-同比增长"])
         
         return {
-            "gap": round(m2_yoy - m1_yoy, 2),
+            "gap": round(m1_yoy - m2_yoy, 2),
             "m2_yoy": round(m2_yoy, 2),
             "m1_yoy": round(m1_yoy, 2),
             "data_date": str(latest["月份"])

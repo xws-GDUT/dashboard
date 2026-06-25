@@ -266,9 +266,9 @@
                 <div class="sub"><span id="m2-period">--</span><br>增长 <span id="m2-multiple">--</span> 倍</div>
             </div>
             <div class="stat-card" style="border-left: 3px solid #eab308;">
-                <div class="label">✂️ M2-M1 剪刀差 <span class="badge" style="background:rgba(234,179,8,0.15);color:#eab308;">央行</span></div>
+                <div class="label">✂️ M1-M2 剪刀差 <span class="badge" style="background:rgba(234,179,8,0.15);color:#eab308;">央行</span></div>
                 <div class="value" style="color:#eab308;" id="m1m2-gap">--</div>
-                <div class="sub">M2同比: <strong id="m2-yoy">--</strong> · M1同比: <strong id="m1-yoy">--</strong><br>数据: <span id="m1m2-date">--</span></div>
+                <div class="sub">M1同比: <strong id="m1-yoy">--</strong> · M2同比: <strong id="m2-yoy">--</strong><br>数据: <span id="m1m2-date">--</span></div>
             </div>
             <div class="stat-card" style="border-left: 3px solid #10b981;">
                 <div class="label">🛒 近20年 CPI 平均年化 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">通胀率</span></div>
@@ -305,7 +305,7 @@
         <!-- M2/M1 环比剪刀差走势图 -->
         <div class="charts-grid">
             <div class="chart-card full-width">
-                <h3>✂️ M2-M1 环比剪刀差走势 (24个月)</h3>
+                <h3>✂️ M1-M2 环比剪刀差走势 (24个月)</h3>
                 <div class="chart-container" style="height: 400px;">
                     <canvas id="m1m2Chart"></canvas>
                 </div>
@@ -433,8 +433,8 @@
             if (!data || data.length === 0) return;
             const ctx = document.getElementById('m1m2Chart').getContext('2d');
             const labels = data.map(d => d.month);
-            // 剪刀差 = M2环比 - M1环比
-            const gapData = data.map(d => parseFloat((d.m2_mom - d.m1_mom).toFixed(2)));
+            // 剪刀差 = M1环比 - M2环比
+            const gapData = data.map(d => parseFloat((d.m1_mom - d.m2_mom).toFixed(2)));
 
             if (m1m2Chart) m1m2Chart.destroy();
 
@@ -443,10 +443,10 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'M2-M1 环比剪刀差 (%)',
+                        label: 'M1-M2 环比剪刀差 (%)',
                         data: gapData,
-                        backgroundColor: gapData.map(v => v >= 0 ? 'rgba(139, 92, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)'),
-                        borderColor: gapData.map(v => v >= 0 ? '#8b5cf6' : '#ef4444'),
+                        backgroundColor: gapData.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)'),
+                        borderColor: gapData.map(v => v >= 0 ? '#10b981' : '#ef4444'),
                         borderWidth: 1
                     }]
                 },
