@@ -275,6 +275,11 @@
                 <div class="value bond" id="bond-yield">--</div>
                 <div class="sub">% 年化收益率</div>
             </div>
+            <div class="stat-card" style="border-left: 3px solid #ec4899;">
+                <div class="label">🏦 LPR 贷款市场报价利率 <span class="badge" style="background:rgba(236,72,153,0.15);color:#ec4899;">央行</span></div>
+                <div class="value" style="color:#ec4899;" id="lpr-value">--</div>
+                <div class="sub">1年期: <strong id="lpr-1y">--</strong> · 5年期: <strong id="lpr-5y">--</strong><br>发布日: <span id="lpr-date">--</span></div>
+            </div>
             <div class="stat-card" style="border-left: 3px solid #ef4444;">
                 <div class="label">⛽ 92号汽油 · 深圳 <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">广东</span></div>
                 <div class="value" style="color:#ef4444;" id="oil-sz">--</div>
@@ -419,6 +424,18 @@
 
             // 金价/国债比 - 已删除
             // (原卡片已移除)
+
+            // LPR
+            if (data.lpr) {
+                if (data.lpr.lpr_1y) {
+                    document.getElementById('lpr-1y').textContent = data.lpr.lpr_1y.toFixed(2) + '%';
+                }
+                if (data.lpr.lpr_5y) {
+                    document.getElementById('lpr-5y').textContent = data.lpr.lpr_5y.toFixed(2) + '%';
+                }
+                document.getElementById('lpr-value').textContent = '5年期 ' + (data.lpr.lpr_5y || '--').toFixed(2) + '%';
+                document.getElementById('lpr-date').textContent = data.lpr.data_date || '--';
+            }
 
             // 油价
             if (data.oil) {

@@ -277,6 +277,42 @@ def fetch_bond_yield() -> Optional[Dict]:
     return None
 
 
+def fetch_lpr() -> Optional[Dict]:
+    """获取最新贷款市场报价利率 (LPR)
+
+    数据来源: AKShare → macro_china_lpr (中国人民银行)
+    LPR每月20日(遇节假日顺延)发布
+
+    Returns:
+        dict: {
+            "lpr_1y": float,    # 1年期LPR (%)
+            "lpr_5y": float,    # 5年期LPR (%)
+            "data_date": str,   # 发布日期
+        }
+        失败返回 None
+    """
+    try:
+        import akshare as ak
+        df = ak.macro_china_lpr()
+        if df is None or df.empty:
+            return None
+        
+        latest = df.iloc[-1]
+        lpr_1y = float(latest["LPR1Y"])
+        lpr_5y = float(latest["LPR5Y"])
+        
+        if lpr_1y > 0 and lpr_5y > 0:
+            return {
+                "lpr_1y": round(lpr_1y, 2),
+                "lpr_5y": round(lpr_5y, 2),
+                "data_date": str(latest["TRADE_DATE"])
+            }
+        return None
+    except Exception as e:
+        print(f"[ERROR] 获取LPR失败: {e}")
+        return None
+
+
 def fetch_oil_price() -> Optional[Dict]:
     """获取92号汽油油价 (深圳=广东, 泉州=福建)
 

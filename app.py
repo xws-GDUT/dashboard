@@ -45,6 +45,13 @@ def api_summary():
     except Exception:
         bond_data = None
     
+    # 获取最新LPR
+    try:
+        from fetcher import fetch_lpr
+        lpr_data = fetch_lpr()
+    except Exception:
+        lpr_data = None
+    
     # 最新金价 (优先实时数据)
     if gold_data:
         gold_price = gold_data["price_cny_gram"]
@@ -168,6 +175,11 @@ def api_summary():
             "cpi_min": cpi["cpi_min"] if cpi else None,
             "cpi_median": cpi["cpi_median"] if cpi else None,
             "data_period": cpi["data_period"] if cpi else None
+        },
+        "lpr": {
+            "lpr_1y": lpr_data["lpr_1y"] if lpr_data else None,
+            "lpr_5y": lpr_data["lpr_5y"] if lpr_data else None,
+            "data_date": lpr_data["data_date"] if lpr_data else None
         }
     })
 
