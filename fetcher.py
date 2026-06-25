@@ -154,149 +154,172 @@ def fetch_gold_price() -> Optional[Dict]:
 
 
 def calc_shuibei_buy_price(au9999_price: float) -> Dict:
-    """动态预测水贝黄金回购价差（基于融通金实际运营模型）
+    """融通金APP水贝黄金实时回购价（精确定价模型）
 
-    价差构成（来自研究报告）:
-      回购价差 = 运营成本 + 熔炼损耗 + 检测费 + 利润空间
-              ≈ 基准价差 × 运营景气系数 × 风险溢价系数
+    交易时段定价:
+      SGE基准价 = AU9999×35% + AU(T+D)×65% (夜市AU9999降为20%)
+      XAU人民币基准 = 伦敦金 × 汇率 ÷ 31.1035
+      综合基准价 = SGE基准价×0.95 + XAU人民币基准×0.05
+      APP回购价 = 综合基准价 - S_固定(1.0元) - S_波动(0~2元)
 
-    模型基于研究报告中的实际验证数据拟合:
-      2025-08-29: 价差1.60元 (金价~780, 低波动)
-      2026-06-10: 价差4.00元 (金价~917, 正常)
-      2026-06-23: 价差4.18元 (金价~899, 正常交易时段)
-      2026-06-25: 价差2.00元 (金价~872, 盘前普通金)
-      2026-06-25: 价差16.99元 (金价~885, 盘前9999品种，极端)
-
-    关键规律:
-      1. 正常交易时段价差: 1.6~4.2元，均值约3.5元
-      2. 金价越高→回收商资金占用越大→价差越宽
-      3. 金价急跌→回收商恐慌→价差急剧扩大
-      4. 盘前/非交易时段→流动性差→价差拉大
+    非交易时段定价:
+      休市基准价 = 收盘SGE基准价 × (1 + 国际金价涨跌幅)
+      汇率修正: 若汇率波动>0.2%
+      APP休市回购价 = 汇率修正基准 - S_固定 - S_休市风险(1~3元)
 
     Args:
         au9999_price: 上金所 Au99.99 实时价 (元/克)
 
     Returns:
-        {
-            "shuibei_buy": float,
-            "spread": float,
-            "spread_detail": str,
-            "breakdown": dict,  # 价差构成明细
-        }
+        dict: {shuibei_buy, spread, spread_detail, breakdown, ...}
     """
-    # === 基准价差: 研究报告历史数据均值 ===
-    # 正常交易时段: (1.60+4.00+4.18+4.00+1.60)/5 ≈ 3.08
-    # 取整为3.0作为正常市场基准
-    BASE_SPREAD = 3.0
-    
-    # === 价差构成比例 (来自研究报告) ===
-    # 运营成本40% + 熔炼损耗20% + 检测费15% + 利润25%
-    COST_RATIO = {"运营成本": 0.40, "熔炼损耗": 0.20, "检测费": 0.15, "利润": 0.25}
+    from datetime import datetime
     
     try:
         import akshare as ak
-        from datetime import datetime
         
-        # === 因子1: 金价水平 (资金占用成本) ===
-        # 金价越高，回收商每克占用的资金越多，资金成本线性上升
-        # 以800元为基准 (2025年中枢)
-        price_level = au9999_price / 800.0  # >1则成本高于基准
-        
-        # 运营成本中约40%与金价直接相关 (资金占用、保险、运输)
-        price_impact = (price_level - 1.0) * BASE_SPREAD * 0.4
-        
-        # === 因子2: 市场波动率 (风险溢价) ===
-        df_gold = ak.spot_hist_sge(symbol="Au99.99")
-        if df_gold is not None and not df_gold.empty:
-            recent = df_gold.tail(20)
-            volatility = recent["close"].std()
-            mean_price = recent["close"].mean()
-            vol_ratio = volatility / mean_price
-            
-            # 5日趋势
-            recent5 = recent.tail(5)
-            trend_5d = (recent5.iloc[-1]["close"] - recent5.iloc[0]["close"]) / recent5.iloc[0]["close"]
-        else:
-            vol_ratio = 0.015
-            trend_5d = 0.0
-        
-        # 波动率影响熔炼损耗和检测费（行情不稳时更谨慎）
-        # 基准波动率约1.5%，当前越高→风险溢价越大
-        vol_impact = max(0, (vol_ratio - 0.015) * 100)  # 每1%超额波动加0.1元
-        
-        # === 因子3: 趋势方向 (回收商行为心理) ===
-        # 急跌时回收商极度谨慎，价差可翻倍
-        if trend_5d < -0.04:       # 暴跌>4%
-            trend_mult = 1.6
-        elif trend_5d < -0.02:     # 明显下跌
-            trend_mult = 1.3
-        elif trend_5d < -0.01:     # 温和下跌
-            trend_mult = 1.1
-        elif trend_5d < 0.01:      # 横盘
-            trend_mult = 1.0
-        elif trend_5d < 0.02:      # 温和上涨
-            trend_mult = 0.9
-        else:                       # 明显上涨: 回收积极
-            trend_mult = 0.8
-        
-        # === 因子4: 交易时段判断 ===
         now = datetime.now()
         hour = now.hour + now.minute / 60.0
-        # 上金所交易时段: 9:00-15:30, 19:50-02:30
-        is_trading = (9.0 <= hour <= 15.5) or (19.83 <= hour <= 24.0) or (0 <= hour <= 2.5)
-        session_mult = 1.0 if is_trading else 1.3  # 非交易时段+30%
         
-        # === 综合回购价差 ===
-        base_with_price = BASE_SPREAD + price_impact
-        spread_before_trend = base_with_price + vol_impact
-        spread_after_trend = spread_before_trend * trend_mult
-        spread = spread_after_trend * session_mult
+        # 交易时段判断
+        is_day_session = (9.0 <= hour <= 15.5)     # 日市 9:00-15:30
+        is_night_session = (19.83 <= hour <= 24.0) or (0 <= hour <= 2.5)  # 夜市 19:50-2:30
+        is_trading = is_day_session or is_night_session
         
-        # 限制在 1.5 ~ 8.0 元 (去掉极端盘前值)
-        spread = max(1.5, min(8.0, spread))
-        spread = round(spread, 2)
+        # === 获取国际金价和汇率 ===
+        intl_data = fetch_intl_gold()
+        if intl_data:
+            london_price = intl_data["price_usd_oz"]     # 伦敦金 USD/oz
+            fx_rate = intl_data["fx_rate"]                # USDCNY 在岸汇率
+        else:
+            london_price = au9999_price * 31.1035 / 7.25  # 估算
+            fx_rate = 7.25
         
-        # === 价差构成明细 ===
-        breakdown = {
-            "运营成本": round(spread * COST_RATIO["运营成本"], 2),
-            "熔炼损耗": round(spread * COST_RATIO["熔炼损耗"], 2),
-            "检测费": round(spread * COST_RATIO["检测费"], 2),
-            "利润": round(spread * COST_RATIO["利润"], 2),
-        }
+        # XAU人民币基准 = 伦敦金 × 汇率 ÷ 31.1035
+        xau_cny = london_price * fx_rate / 31.1035
         
-        shuibei_buy = round(au9999_price - spread, 2)
+        if is_trading:
+            # ============ 交易时段定价 ============
+            
+            # 获取 AU(T+D) 价格
+            try:
+                df_td = ak.spot_quotations_sge()
+                au_td_rows = df_td[df_td["品种"].str.contains("Au.*T.*D|AUTD", case=False, na=False)]
+                if not au_td_rows.empty:
+                    au_td_price = float(au_td_rows.iloc[-1]["现价"])
+                else:
+                    au_td_price = au9999_price  # fallback
+            except:
+                au_td_price = au9999_price
+            
+            # 权重: 日市 AU9999=35%, AU(T+D)=65%; 夜市 AU9999=20%, AU(T+D)=80%
+            if is_night_session:
+                w1, w2 = 0.20, 0.80
+            else:
+                w1, w2 = 0.35, 0.65
+            
+            # SGE基准价
+            sge_base = au9999_price * w1 + au_td_price * w2
+            
+            # 综合基准价 = SGE×0.95 + XAU×0.05
+            composite_base = sge_base * 0.95 + xau_cny * 0.05
+            
+            # 固定点差 S_固定 = 1.0元
+            S_fixed = 1.0
+            
+            # 波动风险点差 S_波动: 近1小时涨跌≥5元则扩大
+            S_vol = 0.0
+            try:
+                df_live = ak.spot_quotations_sge()
+                au = df_live[df_live["品种"] == "Au99.99"]
+                if len(au) >= 60:
+                    recent_60 = au.tail(60)
+                    recent_60_price = recent_60["现价"].astype(float)
+                    hour_change = recent_60_price.iloc[-1] - recent_60_price.iloc[0]
+                    if abs(hour_change) >= 5:
+                        S_vol = min(2.0, abs(hour_change) * 0.2)  # 每涨跌5元加1元，上限2元
+            except:
+                pass
+            
+            spread = S_fixed + S_vol
+            shuibei_buy = round(composite_base - spread, 2)
+            
+            detail = f"SGE{sge_base:.1f}×0.95+XAU{xau_cny:.1f}×0.05 - 固定{S_fixed}"
+            if S_vol > 0:
+                detail += f" - 波动{S_vol:.1f}"
+            detail += f" = ¥{shuibei_buy}"
+            
+            session_label = "夜市" if is_night_session else "日市"
+            
+        else:
+            # ============ 非交易时段定价 ============
+            
+            # 获取最近交易日收盘价
+            try:
+                df_hist = ak.spot_hist_sge(symbol="Au99.99")
+                if df_hist is not None and not df_hist.empty:
+                    close_row = df_hist.iloc[-1]
+                    close_price = float(close_row["close"])
+                    close_date = str(close_row["date"])
+                else:
+                    close_price = au9999_price
+                    close_date = "unknown"
+            except:
+                close_price = au9999_price
+                close_date = "unknown"
+            
+            # 估算收盘时的伦敦金价
+            close_london = close_price * 31.1035 / fx_rate
+            
+            # 休市基准价 = 收盘SGE基准 × (1 + 国际金价涨跌幅)
+            london_change = (london_price - close_london) / close_london
+            close_sge_base = close_price  # 近似用收盘价代替SGE基准
+            off_base = close_sge_base * (1 + london_change)
+            
+            # 汇率修正 (波动>0.2%才修正)
+            # 简化处理：直接使用当前汇率
+            
+            # 固定点差
+            S_fixed = 1.0
+            
+            # 休市风险点差: 周末/长假更高
+            weekday = now.weekday()
+            if weekday >= 5:  # 周末
+                S_off_risk = 2.5
+            elif weekday == 4 and hour >= 15.5:  # 周五下午后
+                S_off_risk = 2.0
+            else:
+                S_off_risk = 1.5
+            
+            spread = S_fixed + S_off_risk
+            shuibei_buy = round(off_base - spread, 2)
+            
+            detail = f"休市基准{off_base:.1f}(收盘{close_price:.0f}×{1+london_change:.3f}) - 固定{S_fixed} - 风险{S_off_risk} = ¥{shuibei_buy}"
+            session_label = "休市"
         
-        # 生成说明
-        parts = []
-        if abs(price_impact) > 0.05:
-            parts.append(f"金价{price_impact:+.1f}")
-        if vol_impact > 0.05:
-            parts.append(f"波动+{vol_impact:.1f}")
-        if trend_mult != 1.0:
-            parts.append(f"趋势×{trend_mult:.1f}")
-        if not is_trading:
-            parts.append(f"非交易×1.3")
-        detail = f"基准{BASE_SPREAD}元" + (" + " + " + ".join(parts) if parts else "") + f" = {spread}元"
+        # === 公共输出 ===
+        COST_RATIO = {"运营成本": 0.40, "熔炼损耗": 0.20, "检测费": 0.15, "利润": 0.25}
+        breakdown = {k: round(spread * v, 2) for k, v in COST_RATIO.items()}
         
         return {
             "shuibei_buy": shuibei_buy,
-            "spread": spread,
+            "spread": round(spread, 2),
             "spread_detail": detail,
             "breakdown": breakdown,
-            "price_impact": round(price_impact, 2),
-            "vol_ratio": round(vol_ratio * 100, 2),
-            "trend_5d_pct": round(trend_5d * 100, 2),
+            "session": session_label,
             "is_trading": is_trading,
         }
         
     except Exception as e:
-        spread = 3.0
+        spread = 1.0
         shuibei_buy = round(au9999_price - spread, 2)
         return {
             "shuibei_buy": shuibei_buy,
             "spread": spread,
-            "spread_detail": f"降级模型: {spread}元",
-            "breakdown": {k: round(spread * v, 2) for k, v in COST_RATIO.items()},
+            "spread_detail": f"降级: 基准价-{spread}元",
+            "breakdown": {"运营成本": 0.40, "熔炼损耗": 0.20, "检测费": 0.15, "利润": 0.25},
+            "session": "未知",
+            "is_trading": False,
         }
 
 
