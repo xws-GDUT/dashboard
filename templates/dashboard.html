@@ -250,7 +250,7 @@
             <div class="stat-card" style="border-left: 3px solid #06b6d4; background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);">
                 <div class="label">💧 水贝黄金实时买价 <span class="badge" style="background:rgba(6,182,212,0.15);color:#06b6d4;">融通金</span></div>
                 <div class="value" style="color:#06b6d4;" id="shuibei-price">--</div>
-                <div class="sub">元/克 · Au99.99基准价 - 4元回购价差</div>
+                <div class="sub">回购价差: <strong id="shuibei-spread">--</strong> · Au99.99基准价动态计算</div>
             </div>
             <div class="stat-card">
                 <div class="label">📀 上海金 AU9999 <span class="badge">SGE</span></div>
@@ -380,6 +380,9 @@
             }
             if (data.shuibei_buy) {
                 document.getElementById('shuibei-price').textContent = '¥' + data.shuibei_buy.toLocaleString();
+            }
+            if (data.shuibei_spread !== undefined) {
+                document.getElementById('shuibei-spread').textContent = '¥' + data.shuibei_spread.toFixed(2) + '/g';
             }
         }
 

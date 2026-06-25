@@ -94,9 +94,12 @@ def api_summary():
         gold_time = gold_db["fetch_time"] if gold_db else None
     
     shuibei_price = None
+    shuibei_spread = None
     if gold_price:
         from fetcher import calc_shuibei_buy_price
-        shuibei_price = calc_shuibei_buy_price(gold_price)
+        sb = calc_shuibei_buy_price(gold_price)
+        shuibei_price = sb["shuibei_buy"]
+        shuibei_spread = sb["spread"]
     
     # === 处理国债 ===
     if bond_data:
@@ -172,6 +175,7 @@ def api_summary():
         "gold": {
             "price_cny_gram": gold_price,
             "shuibei_buy": shuibei_price,
+            "shuibei_spread": shuibei_spread,
             "change_vs_yesterday": gold_change,
             "update_time": gold_time,
             "stats_30d": {
@@ -388,9 +392,12 @@ def api_gold_live():
         from fetcher import fetch_gold_price, calc_shuibei_buy_price
         gold_data = fetch_gold_price()
         if gold_data:
+            sb = calc_shuibei_buy_price(gold_data["price_cny_gram"])
             return jsonify({
                 "price_cny_gram": gold_data["price_cny_gram"],
-                "shuibei_buy": calc_shuibei_buy_price(gold_data["price_cny_gram"]),
+                "shuibei_buy": sb["shuibei_buy"],
+                "shuibei_spread": sb["spread"],
+                "spread_detail": sb["spread_detail"],
                 "update_time": gold_data.get("updated_at", "")
             })
     except:
@@ -401,7 +408,12 @@ def api_gold_live():
     conn.close()
     if g:
         from fetcher import calc_shuibei_buy_price
-        return jsonify({"price_cny_gram": g["price_cny_gram"], "shuibei_buy": calc_shuibei_buy_price(g["price_cny_gram"])})
+        sb = calc_shuibei_buy_price(g["price_cny_gram"])
+        return jsonify({
+            "price_cny_gram": g["price_cny_gram"],
+            "shuibei_buy": sb["shuibei_buy"],
+            "shuibei_spread": sb["spread"]
+        })
     return jsonify({})
 
 
