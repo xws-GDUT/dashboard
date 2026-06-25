@@ -280,6 +280,11 @@
                 <div class="value" style="color:#ec4899;" id="lpr-value">--</div>
                 <div class="sub">1年期: <strong id="lpr-1y">--</strong> · 5年期: <strong id="lpr-5y">--</strong><br>发布日: <span id="lpr-date">--</span></div>
             </div>
+            <div class="stat-card" style="border-left: 3px solid #14b8a6;">
+                <div class="label">🏠 公积金贷款利率 <span class="badge" style="background:rgba(20,184,166,0.15);color:#14b8a6;">住建部</span></div>
+                <div class="value" style="color:#14b8a6;" id="fund-value">--</div>
+                <div class="sub">首套 5年以上: <strong id="fund-1st">--</strong> · 二套: <strong id="fund-2nd">--</strong><br>生效日: <span id="fund-date">--</span></div>
+            </div>
             <div class="stat-card" style="border-left: 3px solid #ef4444;">
                 <div class="label">⛽ 92号汽油 · 深圳 <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">广东</span></div>
                 <div class="value" style="color:#ef4444;" id="oil-sz">--</div>
@@ -435,6 +440,14 @@
                 }
                 document.getElementById('lpr-value').textContent = '5年期 ' + (data.lpr.lpr_5y || '--').toFixed(2) + '%';
                 document.getElementById('lpr-date').textContent = data.lpr.data_date || '--';
+            }
+
+            // 公积金利率
+            if (data.fund_rate) {
+                document.getElementById('fund-value').textContent = '首套 ' + (data.fund_rate.first_5y_plus || '--').toFixed(2) + '%';
+                document.getElementById('fund-1st').textContent = (data.fund_rate.first_5y_plus || '--').toFixed(2) + '%';
+                document.getElementById('fund-2nd').textContent = (data.fund_rate.second_5y_plus || '--').toFixed(2) + '%';
+                document.getElementById('fund-date').textContent = data.fund_rate.data_date || '--';
             }
 
             // 油价
