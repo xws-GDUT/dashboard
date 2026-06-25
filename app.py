@@ -379,6 +379,94 @@ def init_web_db():
     conn.close()
 
 
+# === 分片API: 逐个返回数据，前端逐卡片渲染 ===
+
+@app.route("/api/gold_live")
+def api_gold_live():
+    """实时金价 + 水贝买价"""
+    try:
+        from fetcher import fetch_gold_price, calc_shuibei_buy_price
+        gold_data = fetch_gold_price()
+        if gold_data:
+            return jsonify({
+                "price_cny_gram": gold_data["price_cny_gram"],
+                "shuibei_buy": calc_shuibei_buy_price(gold_data["price_cny_gram"]),
+                "update_time": gold_data.get("updated_at", "")
+            })
+    except:
+        pass
+    # fallback
+    conn = get_db()
+    g = conn.execute("SELECT price_cny_gram FROM gold_price ORDER BY fetch_time DESC LIMIT 1").fetchone()
+    conn.close()
+    if g:
+        from fetcher import calc_shuibei_buy_price
+        return jsonify({"price_cny_gram": g["price_cny_gram"], "shuibei_buy": calc_shuibei_buy_price(g["price_cny_gram"])})
+    return jsonify({})
+
+
+@app.route("/api/bond_live")
+def api_bond_live():
+    """实时国债收益率"""
+    try:
+        from fetcher import fetch_bond_yield
+        data = fetch_bond_yield()
+        if data:
+            return jsonify(data)
+    except:
+        pass
+    conn = get_db()
+    b = conn.execute("SELECT yield_10y FROM bond_yield ORDER BY fetch_time DESC LIMIT 1").fetchone()
+    conn.close()
+    if b:
+        return jsonify({"yield_10y": b["yield_10y"]})
+    return jsonify({})
+
+
+@app.route("/api/lpr_live")
+def api_lpr_live():
+    """LPR利率"""
+    try:
+        from fetcher import fetch_lpr
+        data = fetch_lpr()
+        if data:
+            return jsonify(data)
+    except:
+        pass
+    return jsonify({"lpr_1y": 3.0, "lpr_5y": 3.5, "data_date": "2026-06-22"})
+
+
+@app.route("/api/m1m2_live")
+def api_m1m2_live():
+    """M2-M1剪刀差"""
+    try:
+        from fetcher import fetch_m1m2_gap
+        data = fetch_m1m2_gap()
+        if data:
+            return jsonify(data)
+    except:
+        pass
+    return jsonify({})
+
+
+@app.route("/api/static_data")
+def api_static_data():
+    """缓存数据: M2年化、CPI、油价、公积金"""
+    conn = get_db()
+    m2 = conn.execute("SELECT cagr_20y, growth_multiple, data_period FROM m2_cagr ORDER BY fetch_time DESC LIMIT 1").fetchone()
+    cpi = conn.execute("SELECT cagr_20y, cpi_max, cpi_min, data_period FROM cpi_cagr ORDER BY fetch_time DESC LIMIT 1").fetchone()
+    oil_sz = conn.execute("SELECT gasoline_92, data_date FROM oil_price WHERE region='深圳(广东)' ORDER BY fetch_time DESC LIMIT 1").fetchone()
+    oil_qz = conn.execute("SELECT gasoline_92, data_date FROM oil_price WHERE region='泉州(福建)' ORDER BY fetch_time DESC LIMIT 1").fetchone()
+    conn.close()
+    return jsonify({
+        "m2": {"cagr_20y": m2["cagr_20y"], "growth_multiple": m2["growth_multiple"], "data_period": m2["data_period"]} if m2 else None,
+        "cpi": {"cagr_20y": cpi["cagr_20y"], "cpi_max": cpi["cpi_max"], "cpi_min": cpi["cpi_min"], "data_period": cpi["data_period"]} if cpi else None,
+        "oil_sz": {"price": oil_sz["gasoline_92"], "data_date": oil_sz["data_date"]} if oil_sz else None,
+        "oil_qz": {"price": oil_qz["gasoline_92"], "data_date": oil_qz["data_date"]} if oil_qz else None,
+        "fund_rate": {"first_5y_plus": 2.6, "first_5y_below": 2.1, "second_5y_plus": 3.075, "second_5y_below": 2.525, "data_date": "2026-01-01", "source": "中国人民银行"}
+    })
+
+
 if __name__ == "__main__":
     init_web_db()
     port = int(os.environ.get("PORT", 5000))

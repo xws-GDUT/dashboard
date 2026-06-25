@@ -326,113 +326,108 @@
             btn.disabled = true;
             btn.textContent = '⏳ 加载中...';
 
-            try {
-                const [summary, m1m2Monthly] = await Promise.all([
-                    fetch('/api/summary').then(r => r.json()),
-                    fetch('/api/m1m2_monthly').then(r => r.json())
-                ]);
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            statusDot.className = 'status-dot live';
 
-                updateSummary(summary);
-                updateM1M2Chart(m1m2Monthly);
+            let loaded = 0, total = 0;
 
-                document.getElementById('status-dot').className = 'status-dot live';
-                document.getElementById('status-text').textContent = 
-                    '数据已更新 · ' + new Date().toLocaleString('zh-CN');
-            } catch (e) {
-                console.error('加载失败:', e);
-                document.getElementById('status-dot').className = 'status-dot offline';
-                document.getElementById('status-text').textContent = '加载失败，请检查网络';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🔄 刷新数据';
-            }
-        }
-
-        function updateSummary(data) {
-            // 水贝买价
-            if (data.gold && data.gold.shuibei_buy) {
-                document.getElementById('shuibei-price').textContent = '¥' + data.gold.shuibei_buy.toLocaleString();
-            }
-
-            // 金价
-            if (data.gold && data.gold.price_cny_gram) {
-                document.getElementById('gold-price').textContent = '¥' + data.gold.price_cny_gram.toLocaleString();
-                
-                const change = data.gold.change_vs_yesterday;
-                const changeEl = document.getElementById('gold-change');
-                if (change !== null && change !== undefined) {
-                    const sign = change >= 0 ? '+' : '';
-                    changeEl.textContent = `${sign}¥${Math.abs(change).toLocaleString()} vs 昨日`;
-                    changeEl.className = 'change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'neutral');
-                } else {
-                    changeEl.textContent = '--';
+            function done() {
+                loaded++;
+                statusText.textContent = `已加载 ${loaded}/${total} · ${new Date().toLocaleString('zh-CN')}`;
+                if (loaded >= total) {
+                    btn.disabled = false;
+                    btn.textContent = '🔄 刷新';
                 }
             }
 
-            // M2 年化增长率
-            if (data.m2 && data.m2.cagr_20y) {
-                document.getElementById('m2-cagr').textContent = data.m2.cagr_20y.toFixed(2) + '%';
-                document.getElementById('m2-period').textContent = data.m2.data_period || '--';
-                document.getElementById('m2-multiple').textContent = (data.m2.growth_multiple || 0).toFixed(1);
+            function fail(err) {
+                loaded++;
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = `部分加载失败 · ${new Date().toLocaleString('zh-CN')}`;
+                if (loaded >= total) { btn.disabled = false; btn.textContent = '🔄 刷新'; }
             }
 
-            // M2-M1剪刀差
-            if (data.m1m2_gap && data.m1m2_gap.gap !== null) {
-                const gap = data.m1m2_gap.gap;
+            // 逐个请求，先到先渲染
+            const apis = [
+                { url: '/api/gold_live', handler: updateGoldCard },
+                { url: '/api/m1m2_live', handler: updateM1M2Card },
+                { url: '/api/bond_live', handler: updateBondCard },
+                { url: '/api/lpr_live', handler: updateLPRCard },
+                { url: '/api/static_data', handler: updateStaticCards },
+                { url: '/api/m1m2_monthly', handler: updateM1M2Chart },
+            ];
+            total = apis.length;
+
+            apis.forEach(({ url, handler }) => {
+                fetch(url).then(r => r.json()).then(handler).then(done).catch(fail);
+            });
+        }
+
+        // === 逐个渲染函数 ===
+
+        function updateGoldCard(data) {
+            if (data.price_cny_gram) {
+                document.getElementById('gold-price').textContent = '¥' + data.price_cny_gram.toLocaleString();
+            }
+            if (data.shuibei_buy) {
+                document.getElementById('shuibei-price').textContent = '¥' + data.shuibei_buy.toLocaleString();
+            }
+        }
+
+        function updateBondCard(data) {
+            if (data.yield_10y) {
+                document.getElementById('bond-yield').textContent = data.yield_10y.toFixed(4) + '%';
+            }
+        }
+
+        function updateLPRCard(data) {
+            if (data.lpr_1y) document.getElementById('lpr-1y').textContent = data.lpr_1y.toFixed(2) + '%';
+            if (data.lpr_5y) {
+                document.getElementById('lpr-5y').textContent = data.lpr_5y.toFixed(2) + '%';
+                document.getElementById('lpr-value').textContent = '5年期 ' + data.lpr_5y.toFixed(2) + '%';
+            }
+            if (data.data_date) document.getElementById('lpr-date').textContent = data.data_date;
+        }
+
+        function updateM1M2Card(data) {
+            if (data.gap !== null && data.gap !== undefined) {
+                const gap = data.gap;
                 document.getElementById('m1m2-gap').textContent = (gap >= 0 ? '+' : '') + gap.toFixed(2) + '%';
-                document.getElementById('m2-yoy').textContent = (data.m1m2_gap.m2_yoy || 0).toFixed(1) + '%';
-                document.getElementById('m1-yoy').textContent = (data.m1m2_gap.m1_yoy || 0).toFixed(1) + '%';
-                document.getElementById('m1m2-date').textContent = data.m1m2_gap.data_date || '--';
-            }
-
-            // 国债
-            if (data.bond && data.bond.yield_10y) {
-                document.getElementById('bond-yield').textContent = data.bond.yield_10y.toFixed(4) + '%';
-            }
-
-            // CPI
-            if (data.cpi && data.cpi.cagr_20y) {
-                document.getElementById('cpi-cagr').textContent = data.cpi.cagr_20y.toFixed(2) + '%';
-                document.getElementById('cpi-period').textContent = data.cpi.data_period || '--';
-                document.getElementById('cpi-max').textContent = (data.cpi.cpi_max || 0).toFixed(1) + '%';
-                document.getElementById('cpi-min').textContent = (data.cpi.cpi_min || 0).toFixed(1) + '%';
-            }
-
-            // 金价/国债比 - 已删除
-            // (原卡片已移除)
-
-            // LPR
-            if (data.lpr) {
-                if (data.lpr.lpr_1y) {
-                    document.getElementById('lpr-1y').textContent = data.lpr.lpr_1y.toFixed(2) + '%';
-                }
-                if (data.lpr.lpr_5y) {
-                    document.getElementById('lpr-5y').textContent = data.lpr.lpr_5y.toFixed(2) + '%';
-                }
-                document.getElementById('lpr-value').textContent = '5年期 ' + (data.lpr.lpr_5y || '--').toFixed(2) + '%';
-                document.getElementById('lpr-date').textContent = data.lpr.data_date || '--';
-            }
-
-            // 公积金利率
-            if (data.fund_rate) {
-                document.getElementById('fund-value').textContent = '首套 ' + (data.fund_rate.first_5y_plus || '--').toFixed(2) + '%';
-                document.getElementById('fund-1st').textContent = (data.fund_rate.first_5y_plus || '--').toFixed(2) + '%';
-                document.getElementById('fund-2nd').textContent = (data.fund_rate.second_5y_plus || '--').toFixed(2) + '%';
-                document.getElementById('fund-date').textContent = data.fund_rate.data_date || '--';
-            }
-
-            // 油价
-            if (data.oil) {
-                if (data.oil.shenzhen && data.oil.shenzhen.price) {
-                    document.getElementById('oil-sz').textContent = '¥' + data.oil.shenzhen.price.toFixed(2);
-                    document.getElementById('oil-sz-date').textContent = data.oil.shenzhen.data_date || '--';
-                }
-                if (data.oil.quanzhou && data.oil.quanzhou.price) {
-                    document.getElementById('oil-qz').textContent = '¥' + data.oil.quanzhou.price.toFixed(2);
-                    document.getElementById('oil-qz-date').textContent = data.oil.quanzhou.data_date || '--';
-                }
+                if (data.m2_yoy) document.getElementById('m2-yoy').textContent = data.m2_yoy.toFixed(1) + '%';
+                if (data.m1_yoy) document.getElementById('m1-yoy').textContent = data.m1_yoy.toFixed(1) + '%';
+                if (data.data_date) document.getElementById('m1m2-date').textContent = data.data_date;
             }
         }
+
+        function updateStaticCards(data) {
+            if (data.m2) {
+                document.getElementById('m2-cagr').textContent = data.m2.cagr_20y.toFixed(2) + '%';
+                document.getElementById('m2-period').textContent = data.m2.data_period || '';
+                document.getElementById('m2-multiple').textContent = data.m2.growth_multiple.toFixed(1);
+            }
+            if (data.cpi) {
+                document.getElementById('cpi-cagr').textContent = data.cpi.cagr_20y.toFixed(2) + '%';
+                document.getElementById('cpi-period').textContent = data.cpi.data_period || '';
+                document.getElementById('cpi-max').textContent = data.cpi.cpi_max.toFixed(1) + '%';
+                document.getElementById('cpi-min').textContent = data.cpi.cpi_min.toFixed(1) + '%';
+            }
+            if (data.oil_sz) {
+                document.getElementById('oil-sz').textContent = '¥' + data.oil_sz.price.toFixed(2);
+                document.getElementById('oil-sz-date').textContent = data.oil_sz.data_date || '';
+            }
+            if (data.oil_qz) {
+                document.getElementById('oil-qz').textContent = '¥' + data.oil_qz.price.toFixed(2);
+                document.getElementById('oil-qz-date').textContent = data.oil_qz.data_date || '';
+            }
+            if (data.fund_rate) {
+                document.getElementById('fund-value').textContent = '首套 ' + data.fund_rate.first_5y_plus.toFixed(2) + '%';
+                document.getElementById('fund-1st').textContent = data.fund_rate.first_5y_plus.toFixed(2) + '%';
+                document.getElementById('fund-2nd').textContent = data.fund_rate.second_5y_plus.toFixed(2) + '%';
+                document.getElementById('fund-date').textContent = data.fund_rate.data_date;
+            }
+        }
+
 
         function updateM1M2Chart(data) {
             if (!data || data.length === 0) return;
