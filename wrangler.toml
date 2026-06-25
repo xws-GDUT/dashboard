@@ -1,0 +1,12 @@
+# Cloudflare Worker 配置 - Render 保活
+name = "render-keepalive"
+main = "cloudflare-worker.js"
+compatibility_date = "2025-01-01"
+
+# Cron 触发器: 每14分钟执行一次 (< 15分钟休眠阈值)
+[triggers]
+crons = ["*/14 * * * *"]
+
+# 环境变量 (部署后通过 wrangler secret 设置)
+# RENDER_URL = "https://dashboard-4i3t.onrender.com"
+# HEALTH_ENDPOINT = "/healthz"

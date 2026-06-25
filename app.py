@@ -15,6 +15,12 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "data", "prices.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 
+@app.route("/healthz")
+def healthz():
+    """健康检查端点 - 供 Cloudflare Worker 保活使用"""
+    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
