@@ -171,53 +171,95 @@ def calc_shuibei_buy_price(au9999_price: float) -> float:
 
 
 def fetch_bond_yield() -> Optional[Dict]:
-    """获取中国十年期国债收益率
+    """获取中国十年期国债收益率（实时）
     
     数据来源优先级:
-      1. 中国债券信息网 (yield.chinabond.com.cn) - 权威估值，T+1更新
-      2. 东方财富 AKShare bond_zh_us_rate - 备用
-    
-    返回最新一日的十年期国债收益率
+      1. 中国货币网实时收益率曲线 (chinamoney.com.cn) - 盘中实时，每分钟更新
+      2. 中国债券信息网 (yield.chinabond.com.cn) - 权威估值，T+1
+      3. 东方财富 AKShare - 备用
 
     Returns:
         dict: {"yield_10y": float, "data_date": str} 或 None
     """
-    # 方案1: 中国债券信息网 xyQuery API (权威数据)
+    # 方案1: 中国货币网实时收益率曲线 (交易时段实时)
     try:
-        url = "https://yield.chinabond.com.cn/cbweb-mn/pgxh/xyQuery"
+        url = "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/RtimeYldCurv"
+        params = {"lang": "CN"}
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Referer": "https://www.chinamoney.com.cn/chinese/bkcurvrty/",
+        }
+        resp = requests.post(url, params=params, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        head = data.get("head", {})
+        if head.get("rep_code") != "200":
+            print(f"[WARN] 实时曲线API异常: {head.get('rep_message')}")
+        else:
+            records = data.get("data", {}).get("data", [])
+            curve_date = data.get("data", {}).get("date", "")
+            
+            # 找最接近10年的基准债券数据点
+            # 数据行格式: [报买收益率, 报卖收益率, 均值, 期限年, ...]
+            best_buy = None
+            best_sell = None
+            best_term = None
+            
+            for row in records:
+                try:
+                    term = float(row[3]) if row[3] else 0
+                    buy_yield = float(row[0]) if row[0] else 0
+                    sell_yield = float(row[1]) if row[1] else 0
+                    
+                    if buy_yield > 0 and sell_yield > 0:
+                        if best_term is None or abs(term - 10.0) < abs(best_term - 10.0):
+                            best_term = term
+                            best_buy = buy_yield
+                            best_sell = sell_yield
+                except (ValueError, IndexError):
+                    continue
+            
+            if best_buy and best_sell and best_term:
+                # 使用报买和报卖的均值作为十年期收益率
+                mid_yield = round((best_buy + best_sell) / 2, 4)
+                if 0 < mid_yield < 20:  # 合理范围
+                    return {
+                        "yield_10y": mid_yield,
+                        "data_date": curve_date
+                    }
+    except Exception as e:
+        print(f"[WARN] 实时曲线获取失败: {e}")
+    
+    # 方案2: 中国债券信息网 (T+1权威估值)
+    try:
+        from datetime import datetime, timedelta
+        url = "https://yield.chinabond.com.cn/cbweb-mn/pgxh/xyQuery"
+        headers = {
+            "User-Agent": "Mozilla/5.0",
             "X-Requested-With": "XMLHttpRequest",
             "Referer": "https://yield.chinabond.com.cn/cbweb-mn/pgxh/pgxhIndex",
         }
-        
-        # 尝试当天日期，如果没数据则前一天
-        from datetime import datetime, timedelta
         today = datetime.now()
-        
         for days_back in range(3):
             check_date = (today - timedelta(days=days_back)).strftime("%Y-%m-%d")
             resp = requests.get(f"{url}?workTime={check_date}", headers=headers, timeout=15)
             resp.raise_for_status()
             data = resp.json()
-            
-            # 解析: data[0]是曲线数据列表
             if data and len(data) >= 2 and data[0]:
                 curve_data = data[0][0].get("seriesData", [])
                 worktime = data[0][0].get("worktime", check_date)
-                # 找x=10.0的十年期数据点
                 for point in curve_data:
                     if abs(point[0] - 10.0) < 0.01:
                         return {
                             "yield_10y": round(float(point[1]), 4),
                             "data_date": worktime
                         }
-        
-        print("[WARN] 中国债券信息网未返回十年期数据")
     except Exception as e:
         print(f"[WARN] 中国债券信息网获取失败: {e}")
     
-    # 方案2: 东方财富 AKShare (备用)
+    # 方案3: 东方财富 AKShare
     try:
         import akshare as ak
         df = ak.bond_zh_us_rate()
@@ -230,41 +272,8 @@ def fetch_bond_yield() -> Optional[Dict]:
                     "data_date": str(latest["日期"])
                 }
     except Exception as e:
-        print(f"[WARN] 东方财富备用数据源失败: {e}")
+        print(f"[WARN] 东方财富备用也失败: {e}")
     
-    # 方案3: 中国货币网 (最后备用)
-    return _fetch_bond_yield_chinamoney()
-
-
-def _fetch_bond_yield_chinamoney() -> Optional[Dict]:
-    """中国货币网备用方案"""
-    try:
-        url = "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/SddsIntrRateGovYldHis"
-        params = {"lang": "CN", "pageNum": 1, "pageSize": 3}
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json",
-            "Referer": "https://www.chinamoney.com.cn/chinese/sddsintigy/",
-        }
-        resp = requests.post(url, params=params, headers=headers, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        
-        head = data.get("head", {})
-        if head.get("rep_code") != "200":
-            return None
-        
-        records = data.get("records", [])
-        if records:
-            latest = records[0]
-            ten_rate = latest.get("tenRate")
-            if ten_rate and float(ten_rate) > 0:
-                return {
-                    "yield_10y": round(float(ten_rate), 4),
-                    "data_date": latest.get("dateString")
-                }
-    except Exception as e:
-        print(f"[WARN] 中国货币网备用也失败: {e}")
     return None
 
 
