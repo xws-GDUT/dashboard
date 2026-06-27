@@ -15,7 +15,7 @@ function request(method, url) {
     wx.request({
       url: app.globalData.apiBase + url,
       method: method,
-      timeout: 10000,
+      timeout: 60000,
       success(res) {
         if (res.statusCode === 200) {
           resolve(res.data)

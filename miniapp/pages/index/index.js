@@ -4,6 +4,7 @@ Page({
   data: {
     loaded: 0,
     total: 7,
+    warming: true,  // 预热中
     intlGold: {},
     shuibei: {},
     sgeGold: {},
@@ -18,15 +19,27 @@ Page({
   },
 
   onLoad() {
-    this.loadAll()
+    this.warmUp()
   },
 
   onPullDownRefresh() {
-    this.loadAll().then(() => wx.stopPullDownRefresh())
+    this.warmUp().then(() => wx.stopPullDownRefresh())
+  },
+
+  // 先发一个轻量请求唤醒 Render 服务，再加载数据
+  async warmUp() {
+    this.setData({ loaded: 0, warming: true })
+    try {
+      await api.get('/healthz')
+    } catch (e) {
+      // 即使预热失败也继续加载
+      console.warn('预热请求失败，继续加载:', e)
+    }
+    this.setData({ warming: false })
+    this.loadAll()
   },
 
   async loadAll() {
-    this.setData({ loaded: 0 })
     const tasks = [
       { key: 'intlGold', url: '/api/intl_gold', handler: d => ({
         price_usd_oz: '$' + d.price_usd_oz,
