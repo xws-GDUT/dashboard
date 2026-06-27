@@ -461,12 +461,22 @@ def fetch_erp() -> Optional[Dict]:
         # 3. 计算当前 ERP
         erp = round(100 / pe - bond_yield, 2)
         
-        # 4. 分位/阈值: 使用 Wind 万得全A(除金融石油石化) 近10年数据
-        #    沪深300历史PE计算的分位不准确，直接用Wind官方数据
-        #    Wind 近10年: 分位51.37%, 危险值(20分位)4.07, 机会值(80分位)6.02
-        percentile = 51.37
-        danger = 4.07
-        opportunity = 6.02
+        # 4. 动态计算近10年分位 (基于沪深300静态PE历史)
+        recent = df.tail(2500)
+        if len(recent) >= 500:
+            pe_values = recent["静态市盈率"].astype(float)
+            erp_history = (100 / pe_values) - bond_yield
+            erp_history = erp_history.dropna()
+            
+            percentile = round(
+                float((erp_history < erp).sum()) / len(erp_history) * 100, 2
+            )
+            danger = round(float(np.percentile(erp_history, 20)), 2)
+            opportunity = round(float(np.percentile(erp_history, 80)), 2)
+        else:
+            percentile = 51.37
+            danger = 4.07
+            opportunity = 6.02
         
         return {
             "erp": erp,
