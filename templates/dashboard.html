@@ -274,9 +274,9 @@
                 <div class="sub">M1同比: <strong id="m1-yoy">--</strong> · M2同比: <strong id="m2-yoy">--</strong><br>数据: <span id="m1m2-date">--</span></div>
             </div>
             <div class="stat-card" style="border-left: 3px solid #f97316;">
-                <div class="label">⚡ 风险溢价 (ERP) <span class="badge" style="background:rgba(249,115,22,0.15);color:#f97316;">沪深300</span></div>
-                <div class="value" style="color:#f97316;" id="erp-value">5.24%</div>
-                <div class="sub">分位点: <strong id="erp-pct">51.50%</strong> · 机会值: <span id="erp-opp">6.00</span> · 危险值: <span id="erp-risk">4.03</span><br>近10年 PE倒数 - 十年期国债收益率</div>
+                <div class="label">⚡ 风险溢价 (ERP) <span class="badge" style="background:rgba(249,115,22,0.15);color:#f97316;">Wind口径</span></div>
+                <div class="value" style="color:#f97316;" id="erp-value">--</div>
+                <div class="sub">分位点: <strong id="erp-pct">51.37</strong> · 机会值: <span id="erp-opp">6.02</span> · 危险值: <span id="erp-risk">4.07</span><br>万得全A PE倒数 - 十年期国债收益率 · 近10年</div>
             </div>
             <div class="stat-card" style="border-left: 3px solid #10b981;">
                 <div class="label">🛒 近20年 CPI 平均年化 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">通胀率</span></div>
@@ -438,8 +438,8 @@
 
         function updateERPCard(data) {
             if (data.erp !== undefined) {
-                document.getElementById('erp-value').textContent = data.erp.toFixed(2) + '%';
-                document.getElementById('erp-pct').textContent = (data.percentile || 0).toFixed(2) + '%';
+                document.getElementById('erp-value').textContent = data.erp.toFixed(2);
+                document.getElementById('erp-pct').textContent = (data.percentile || 0).toFixed(2);
                 document.getElementById('erp-opp').textContent = (data.opportunity || 0).toFixed(2);
                 document.getElementById('erp-risk').textContent = (data.danger || 0).toFixed(2);
             }
