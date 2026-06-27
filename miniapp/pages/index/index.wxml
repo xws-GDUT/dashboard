@@ -1,0 +1,107 @@
+<view class="container">
+
+  <!-- 状态栏 -->
+  <view class="status-bar">
+    <view>
+      <view class="status-dot"></view>
+      <text>已加载 {{loaded}}/{{total}}</text>
+    </view>
+    <button class="refresh-btn" bindtap="loadAll">🔄 刷新</button>
+  </view>
+
+  <!-- 数据卡片 -->
+  <view class="card-grid">
+
+    <!-- 国际金价 -->
+    <view class="card" style="border-left-color:#f59e0b">
+      <view class="card-label">🌍 国际金价 (XAU/USD)</view>
+      <view class="card-value gold">{{intlGold.price_usd_oz || '--'}}</view>
+      <view class="card-sub">折合: {{intlGold.price_cny_gram || '--'}} · 离岸汇率: {{intlGold.fx_rate || '--'}}</view>
+    </view>
+
+    <!-- 水贝买价 -->
+    <view class="card" style="border-left-color:#06b6d4">
+      <view class="card-label">💧 水贝黄金买价 <text class="badge">融通金</text></view>
+      <view class="card-value cyan">{{shuibei.buy || '--'}}</view>
+      <view class="card-sub">价差: {{shuibei.spread || '--'}}</view>
+    </view>
+
+    <!-- 上海金 -->
+    <view class="card" style="border-left-color:#e2e8f0">
+      <view class="card-label">📀 上海金 AU9999</view>
+      <view class="card-value gold">{{sgeGold.price || '--'}}</view>
+      <view class="card-sub">人民币/克 · 上海黄金交易所</view>
+    </view>
+
+    <!-- M2年化 -->
+    <view class="card" style="border-left-color:#8b5cf6">
+      <view class="card-label">💰 M2 年化增长率</view>
+      <view class="card-value purple">{{m2.cagr || '--'}}</view>
+      <view class="card-sub">{{m2.period || '--'}} · 增长 {{m2.multiple || '--'}} 倍</view>
+    </view>
+
+    <!-- M1-M2剪刀差 -->
+    <view class="card" style="border-left-color:#eab308">
+      <view class="card-label">✂️ M1-M2 剪刀差</view>
+      <view class="card-value yellow">{{m1m2.gap || '--'}}</view>
+      <view class="card-sub">M1: {{m1m2.m1 || '--'}} · M2: {{m1m2.m2 || '--'}}</view>
+    </view>
+
+    <!-- CPI -->
+    <view class="card" style="border-left-color:#10b981">
+      <view class="card-label">🛒 CPI 年化通胀</view>
+      <view class="card-value green">{{cpi.cagr || '--'}}</view>
+      <view class="card-sub">最高 {{cpi.max || '--'}} · 最低 {{cpi.min || '--'}}</view>
+    </view>
+
+    <!-- 国债 -->
+    <view class="card" style="border-left-color:#e2e8f0">
+      <view class="card-label">📈 十年期国债收益率</view>
+      <view class="card-value blue">{{bond.yield || '--'}}</view>
+      <view class="card-sub">实时 · 中国货币网</view>
+    </view>
+
+    <!-- LPR -->
+    <view class="card" style="border-left-color:#ec4899">
+      <view class="card-label">🏦 LPR 利率</view>
+      <view class="card-value pink">5Y {{lpr.lpr_5y || '--'}}</view>
+      <view class="card-sub">1Y: {{lpr.lpr_1y || '--'}} · 5Y: {{lpr.lpr_5y || '--'}}</view>
+    </view>
+
+    <!-- 公积金 -->
+    <view class="card" style="border-left-color:#14b8a6">
+      <view class="card-label">🏠 公积金贷款利率</view>
+      <view class="card-value teal">{{fund.first || '--'}}</view>
+      <view class="card-sub">首套 {{fund.first || '--'}} · 二套 {{fund.second || '--'}}</view>
+    </view>
+
+    <!-- 深圳油价 -->
+    <view class="card" style="border-left-color:#ef4444">
+      <view class="card-label">⛽ 深圳 92# 汽油</view>
+      <view class="card-value red">{{oil.sz || '--'}}</view>
+      <view class="card-sub">元/升 · {{oil.szDate || '--'}}</view>
+    </view>
+
+    <!-- 泉州油价 -->
+    <view class="card" style="border-left-color:#f97316">
+      <view class="card-label">⛽ 泉州 92# 汽油</view>
+      <view class="card-value orange">{{oil.qz || '--'}}</view>
+      <view class="card-sub">元/升 · {{oil.qzDate || '--'}}</view>
+    </view>
+
+  </view>
+
+  <!-- 图表区 -->
+  <view class="chart-section">
+    <view class="chart-title">✂️ M1-M2 同比剪刀差走势</view>
+    <view class="chart-container">
+      <ec-canvas id="m1m2Chart" canvas-id="m1m2Canvas" ec="{{m1m2Chart}}"></ec-canvas>
+    </view>
+  </view>
+
+  <!-- 页脚 -->
+  <view class="footer">
+    <text>数据来源：上海黄金交易所 · 中国人民银行 · 国家统计局 · 中国货币网</text>
+  </view>
+
+</view>

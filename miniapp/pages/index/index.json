@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "ec-canvas": "../../components/ec-canvas/ec-canvas"
+  },
+  "navigationBarTitleText": "行情早知道",
+  "enablePullDownRefresh": true
+}
