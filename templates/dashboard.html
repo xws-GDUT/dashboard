@@ -273,6 +273,11 @@
                 <div class="value" style="color:#eab308;" id="m1m2-gap">--</div>
                 <div class="sub">M1同比: <strong id="m1-yoy">--</strong> · M2同比: <strong id="m2-yoy">--</strong><br>数据: <span id="m1m2-date">--</span></div>
             </div>
+            <div class="stat-card" style="border-left: 3px solid #f97316;">
+                <div class="label">⚡ 风险溢价 (ERP) <span class="badge" style="background:rgba(249,115,22,0.15);color:#f97316;">沪深300</span></div>
+                <div class="value" style="color:#f97316;" id="erp-value">5.24%</div>
+                <div class="sub">分位点: <strong id="erp-pct">51.50%</strong> · 机会值: <span id="erp-opp">6.00</span> · 危险值: <span id="erp-risk">4.03</span><br>近10年 PE倒数 - 十年期国债收益率</div>
+            </div>
             <div class="stat-card" style="border-left: 3px solid #10b981;">
                 <div class="label">🛒 近20年 CPI 平均年化 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">通胀率</span></div>
                 <div class="value" style="color:#10b981;" id="cpi-cagr">--</div>
@@ -465,6 +470,12 @@
                 document.getElementById('fund-1st').textContent = data.fund_rate.first_5y_plus.toFixed(2) + '%';
                 document.getElementById('fund-2nd').textContent = data.fund_rate.second_5y_plus.toFixed(2) + '%';
                 document.getElementById('fund-date').textContent = data.fund_rate.data_date;
+            }
+            if (data.erp) {
+                document.getElementById('erp-value').textContent = data.erp.current.toFixed(2) + '%';
+                document.getElementById('erp-pct').textContent = data.erp.percentile.toFixed(2) + '%';
+                document.getElementById('erp-opp').textContent = data.erp.opportunity.toFixed(2);
+                document.getElementById('erp-risk').textContent = data.erp.danger.toFixed(2);
             }
         }
 

@@ -488,7 +488,8 @@ def api_static_data():
         "cpi": {"cagr_20y": cpi["cagr_20y"], "cpi_max": cpi["cpi_max"], "cpi_min": cpi["cpi_min"], "data_period": cpi["data_period"]} if cpi else None,
         "oil_sz": {"price": oil_sz["gasoline_92"], "data_date": oil_sz["data_date"]} if oil_sz else None,
         "oil_qz": {"price": oil_qz["gasoline_92"], "data_date": oil_qz["data_date"]} if oil_qz else None,
-        "fund_rate": {"first_5y_plus": 2.6, "first_5y_below": 2.1, "second_5y_plus": 3.075, "second_5y_below": 2.525, "data_date": "2026-01-01", "source": "中国人民银行"}
+        "fund_rate": {"first_5y_plus": 2.6, "first_5y_below": 2.1, "second_5y_plus": 3.075, "second_5y_below": 2.525, "data_date": "2026-01-01", "source": "中国人民银行"},
+        "erp": {"current": 5.24, "percentile": 51.50, "danger": 4.03, "opportunity": 6.00, "source": "沪深300 PE倒数 - 十年期国债收益率"}
     })
 
 
