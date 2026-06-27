@@ -1,10 +1,11 @@
 const api = require('../../utils/api')
+const monitor = require('../../utils/monitor')
 
 Page({
   data: {
     loaded: 0,
     total: 7,
-    warming: true,  // 预热中
+    warming: true,
     intlGold: {},
     shuibei: {},
     sgeGold: {},
@@ -19,11 +20,18 @@ Page({
   },
 
   onLoad() {
+    monitor.trackPageView('pages/index/index')
     this.warmUp()
   },
 
   onPullDownRefresh() {
     this.warmUp().then(() => wx.stopPullDownRefresh())
+  },
+
+  // 刷新按钮点击监控
+  onRefreshTap() {
+    monitor.trackClick({ type: 'button', currentTarget: { id: 'btn_refresh' } })
+    this.warmUp()
   },
 
   // 先发一个轻量请求唤醒 Render 服务，再加载数据

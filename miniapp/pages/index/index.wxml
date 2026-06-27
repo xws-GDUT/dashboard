@@ -6,7 +6,7 @@
       <view class="status-dot"></view>
       <text>已加载 {{loaded}}/{{total}}</text>
     </view>
-    <button class="refresh-btn" bindtap="loadAll">🔄 刷新</button>
+    <button class="refresh-btn" bindtap="onRefreshTap">🔄 刷新</button>
   </view>
 
   <!-- 数据卡片 -->
