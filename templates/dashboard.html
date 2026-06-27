@@ -481,12 +481,6 @@
                 document.getElementById('fund-2nd').textContent = data.fund_rate.second_5y_plus.toFixed(2) + '%';
                 document.getElementById('fund-date').textContent = data.fund_rate.data_date;
             }
-            if (data.erp) {
-                document.getElementById('erp-value').textContent = data.erp.current.toFixed(2) + '%';
-                document.getElementById('erp-pct').textContent = data.erp.percentile.toFixed(2) + '%';
-                document.getElementById('erp-opp').textContent = data.erp.opportunity.toFixed(2);
-                document.getElementById('erp-risk').textContent = data.erp.danger.toFixed(2);
-            }
         }
 
 
