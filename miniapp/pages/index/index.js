@@ -21,33 +21,44 @@ Page({
 
   onLoad() {
     monitor.trackPageView('pages/index/index')
-    this.warmUp()
+    this._startLoading()
+  },
+
+  onShow() {
+    // 仅首次 onLoad 后由 warmUp 触发加载，onShow 不再重复触发
   },
 
   onPullDownRefresh() {
-    this.warmUp().then(() => wx.stopPullDownRefresh())
+    this._startLoading().then(() => wx.stopPullDownRefresh())
   },
 
-  // 刷新按钮点击监控
   onRefreshTap() {
     monitor.trackClick({ type: 'button', currentTarget: { id: 'btn_refresh' } })
-    this.warmUp()
+    this._startLoading()
   },
 
-  // 先发一个轻量请求唤醒 Render 服务，再加载数据
-  async warmUp() {
+  // 统一的加载入口，防止重复调用
+  _startLoading() {
+    if (this._loading) return Promise.resolve()
+    this._loading = true
     this.setData({ loaded: 0, warming: true })
-    try {
-      await api.get('/healthz')
-    } catch (e) {
-      // 即使预热失败也继续加载
-      console.warn('预热请求失败，继续加载:', e)
-    }
-    this.setData({ warming: false })
-    this.loadAll()
+    return api.get('/healthz').catch(e => {
+      console.warn('预热失败:', e)
+    }).then(() => {
+      this.setData({ warming: false })
+      return this._loadAll()
+    })
   },
 
-  async loadAll() {
+  _loadAll() {
+    const total = 7
+    let done = 0
+    const inc = () => {
+      done++
+      this.setData({ loaded: done })
+      if (done >= total) this._loading = false
+    }
+
     const tasks = [
       { key: 'intlGold', url: '/api/intl_gold', handler: d => ({
         price_usd_oz: '$' + d.price_usd_oz,
@@ -55,7 +66,10 @@ Page({
         fx_rate: d.fx_rate
       }) },
       { key: 'gold', url: '/api/gold_live', handler: d => {
-        this.setData({ sgeGold: { price: '¥' + d.price_cny_gram + '/g' }, shuibei: { buy: '¥' + d.shuibei_buy + '/g', spread: '¥' + d.shuibei_spread + '/g' } })
+        this.setData({
+          sgeGold: { price: '¥' + d.price_cny_gram + '/g' },
+          shuibei: { buy: '¥' + d.shuibei_buy + '/g', spread: '¥' + d.shuibei_spread + '/g' }
+        })
         return {}
       }},
       { key: 'm1m2', url: '/api/m1m2_live', handler: d => ({
@@ -89,13 +103,12 @@ Page({
       api.get(task.url).then(data => {
         const result = task.handler(data)
         if (Object.keys(result).length > 0) {
-          const update = {}
-          update[task.key] = result
-          this.setData(update)
+          this.setData({ [task.key]: result })
         }
-        this.setData({ loaded: this.data.loaded + 1 })
-      }).catch(() => {
-        this.setData({ loaded: this.data.loaded + 1 })
+        inc()
+      }).catch(err => {
+        console.error('[加载失败]', task.url, err)
+        inc()
       })
     })
   },
