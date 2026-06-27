@@ -373,6 +373,7 @@
                 { url: '/api/m1m2_live', handler: updateM1M2Card },
                 { url: '/api/bond_live', handler: updateBondCard },
                 { url: '/api/lpr_live', handler: updateLPRCard },
+                { url: '/api/erp', handler: updateERPCard },
                 { url: '/api/static_data', handler: updateStaticCards },
                 { url: '/api/m1m2_monthly', handler: updateM1M2Chart },
             ];
@@ -433,6 +434,15 @@
                 document.getElementById('lpr-value').textContent = '5年期 ' + data.lpr_5y.toFixed(2) + '%';
             }
             if (data.data_date) document.getElementById('lpr-date').textContent = data.data_date;
+        }
+
+        function updateERPCard(data) {
+            if (data.erp !== undefined) {
+                document.getElementById('erp-value').textContent = data.erp.toFixed(2) + '%';
+                document.getElementById('erp-pct').textContent = (data.percentile || 0).toFixed(2) + '%';
+                document.getElementById('erp-opp').textContent = (data.opportunity || 0).toFixed(2);
+                document.getElementById('erp-risk').textContent = (data.danger || 0).toFixed(2);
+            }
         }
 
         function updateM1M2Card(data) {

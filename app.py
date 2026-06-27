@@ -417,6 +417,19 @@ def api_gold_live():
     return jsonify({})
 
 
+@app.route("/api/erp")
+def api_erp():
+    """风险溢价 ERP"""
+    try:
+        from fetcher import fetch_erp
+        data = fetch_erp()
+        if data:
+            return jsonify(data)
+    except:
+        pass
+    return jsonify({})
+
+
 @app.route("/api/intl_gold")
 def api_intl_gold():
     """国际金价 (XAU/USD) 折算人民币"""

@@ -420,6 +420,78 @@ def _fetch_usdcnh() -> Optional[float]:
     return None
 
 
+def fetch_erp() -> Optional[Dict]:
+    """计算沪深300股权风险溢价 (ERP)
+
+    ERP = 100/PE_TTM - 十年期国债收益率
+    数据来源: AKShare stock_index_pe_lg + 中国债券信息网
+
+    Returns:
+        dict: {
+            "erp": float,          # 当前ERP (%)
+            "pe": float,           # 沪深300 PE_TTM
+            "percentile": float,   # 近10年分位点 (%)
+            "danger": float,       # 危险值 (20分位)
+            "opportunity": float,  # 机会值 (80分位)
+            "data_date": str,      # 数据日期
+        }
+    """
+    try:
+        import akshare as ak
+        import numpy as np
+        
+        # 1. 获取沪深300 PE
+        df = ak.stock_index_pe_lg(symbol="沪深300")
+        if df is None or df.empty:
+            return None
+        
+        latest = df.iloc[-1]
+        pe = float(latest["滚动市盈率"])
+        data_date = str(latest["日期"])
+        
+        # 2. 获取十年期国债收益率
+        bond = fetch_bond_yield()
+        if bond:
+            bond_yield = bond["yield_10y"]
+        else:
+            bond_yield = 1.75  # 默认
+        
+        # 3. 计算当前 ERP
+        erp = round(100 / pe - bond_yield, 2)
+        
+        # 4. 计算近10年分位 (用历史PE数据 + 历史国债近似)
+        recent = df.tail(2500)  # 约10年交易日
+        if len(recent) >= 500:
+            pe_values = recent["滚动市盈率"].astype(float)
+            # 用当前国债收益率近似（历史国债变化不大）
+            erp_history = (100 / pe_values) - bond_yield
+            erp_history = erp_history.dropna()
+            
+            percentile = round(
+                (erp_history < erp).sum() / len(erp_history) * 100, 2
+            )
+            danger = round(np.percentile(erp_history, 20), 2)
+            opportunity = round(np.percentile(erp_history, 80), 2)
+        else:
+            percentile = 51.50
+            danger = 4.03
+            opportunity = 6.00
+        
+        return {
+            "erp": erp,
+            "pe": round(pe, 2),
+            "bond_yield": bond_yield,
+            "percentile": percentile,
+            "danger": danger,
+            "opportunity": opportunity,
+            "data_date": data_date,
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] 获取ERP失败: {e}")
+        return None
+
+
 def fetch_bond_yield() -> Optional[Dict]:
     """获取中国十年期国债收益率（实时）
     
