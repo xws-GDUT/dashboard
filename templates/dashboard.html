@@ -273,11 +273,6 @@
                 <div class="value" style="color:#eab308;" id="m1m2-gap">--</div>
                 <div class="sub">M1同比: <strong id="m1-yoy">--</strong> · M2同比: <strong id="m2-yoy">--</strong><br>数据: <span id="m1m2-date">--</span></div>
             </div>
-            <div class="stat-card" style="border-left: 3px solid #f97316;">
-                <div class="label">⚡ 风险溢价 (ERP) <span class="badge" style="background:rgba(249,115,22,0.15);color:#f97316;">Wind口径</span></div>
-                <div class="value" style="color:#f97316;" id="erp-value">--</div>
-                <div class="sub">分位点: <strong id="erp-pct">--</strong> · 机会值: <span id="erp-opp">--</span> · 危险值: <span id="erp-risk">--</span><br>沪深300 静态PE倒数 - 十年期国债 · 分位/阈值来自Wind万得全A</div>
-            </div>
             <div class="stat-card" style="border-left: 3px solid #10b981;">
                 <div class="label">🛒 近20年 CPI 平均年化 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">通胀率</span></div>
                 <div class="value" style="color:#10b981;" id="cpi-cagr">--</div>
@@ -373,7 +368,6 @@
                 { url: '/api/m1m2_live', handler: updateM1M2Card },
                 { url: '/api/bond_live', handler: updateBondCard },
                 { url: '/api/lpr_live', handler: updateLPRCard },
-                { url: '/api/erp', handler: updateERPCard },
                 { url: '/api/static_data', handler: updateStaticCards },
                 { url: '/api/m1m2_monthly', handler: updateM1M2Chart },
             ];
@@ -434,15 +428,6 @@
                 document.getElementById('lpr-value').textContent = '5年期 ' + data.lpr_5y.toFixed(2) + '%';
             }
             if (data.data_date) document.getElementById('lpr-date').textContent = data.data_date;
-        }
-
-        function updateERPCard(data) {
-            if (data.erp !== undefined) {
-                document.getElementById('erp-value').textContent = data.erp.toFixed(2);
-                document.getElementById('erp-pct').textContent = (data.percentile || 0).toFixed(2) + '%';
-                document.getElementById('erp-opp').textContent = (data.opportunity || 0).toFixed(2);
-                document.getElementById('erp-risk').textContent = (data.danger || 0).toFixed(2);
-            }
         }
 
         function updateM1M2Card(data) {
