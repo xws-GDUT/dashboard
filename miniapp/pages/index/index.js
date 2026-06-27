@@ -43,7 +43,7 @@ Page({
         m2: d.m2_yoy + '%'
       }) },
       { key: 'bond', url: '/api/bond_live', handler: d => ({ yield: d.yield_10y + '%' }) },
-      { key: 'lpr', url: '/api/lpr_live', handler: d => d }),
+      { key: 'lpr', url: '/api/lpr_live', handler: d => d },
       { key: 'static', url: '/api/static_data', handler: d => {
         this.setData({
           m2: d.m2 ? { cagr: d.m2.cagr_20y + '%', period: d.m2.data_period, multiple: d.m2.growth_multiple } : {},
