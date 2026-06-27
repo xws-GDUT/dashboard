@@ -1,4 +1,25 @@
 {
-  "description": "行情早知道 — 微信小程序版",
-  "version": "1.0.0"
+  "description": "小算盘行情版 — 实时宏观经济数据仪表盘",
+  "version": "1.0.0",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "coverView": true,
+    "autoAudits": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.3.4",
+  "appid": "请替换为你的AppID",
+  "projectname": "小算盘行情版",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "condition": {}
 }
