@@ -446,7 +446,9 @@ def fetch_erp() -> Optional[Dict]:
             return None
         
         latest = df.iloc[-1]
-        pe = float(latest["滚动市盈率"])
+        # Wind 口径: 使用静态市盈率（更接近万得全A除金融石油石化的PE）
+        # 滚动PE(TTM)波动大，静态PE与Wind APP数据更一致
+        pe = float(latest["静态市盈率"])
         data_date = str(latest["日期"])
         
         # 2. 获取十年期国债收益率
@@ -459,10 +461,10 @@ def fetch_erp() -> Optional[Dict]:
         # 3. 计算当前 ERP
         erp = round(100 / pe - bond_yield, 2)
         
-        # 4. 计算近10年分位 (用历史PE数据 + 历史国债近似)
+        # 4. 计算近10年分位 (使用静态PE历史数据)
         recent = df.tail(2500)  # 约10年交易日
         if len(recent) >= 500:
-            pe_values = recent["滚动市盈率"].astype(float)
+            pe_values = recent["静态市盈率"].astype(float)
             # 用当前国债收益率近似（历史国债变化不大）
             erp_history = (100 / pe_values) - bond_yield
             erp_history = erp_history.dropna()
