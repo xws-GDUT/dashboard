@@ -1,5 +1,5 @@
 # Cloudflare Worker 配置 - Render 保活
-name = "render-keepalive"
+name = "dashboard"
 main = "cloudflare-worker.js"
 compatibility_date = "2025-01-01"
 
